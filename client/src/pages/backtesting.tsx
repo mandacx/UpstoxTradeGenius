@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -184,14 +184,18 @@ export default function Backtesting() {
   };
 
   const formatCurrency = (value: string | number) => {
+    const numValue = Number(value);
+    if (isNaN(numValue)) return '₹0.00';
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR'
-    }).format(Number(value));
+    }).format(numValue);
   };
 
   const formatPercentage = (value: string | number) => {
-    return `${(Number(value) * 100).toFixed(2)}%`;
+    const numValue = Number(value);
+    if (isNaN(numValue)) return '0.00%';
+    return `${(numValue * 100).toFixed(2)}%`;
   };
 
   // Stock/Index options
@@ -487,7 +491,7 @@ export default function Backtesting() {
                         </div>
                         <div className="text-center">
                           <div className="text-2xl font-bold">
-                            {Number(backtest.sharpeRatio || 0).toFixed(2)}
+                            {typeof backtest.sharpeRatio === 'number' ? backtest.sharpeRatio.toFixed(2) : '0.00'}
                           </div>
                           <div className="text-xs text-gray-400">Sharpe Ratio</div>
                         </div>
