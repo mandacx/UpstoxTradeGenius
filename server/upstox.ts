@@ -26,6 +26,13 @@ class UpstoxService {
   private clientId = process.env.UPSTOX_CLIENT_ID || "";
   private clientSecret = process.env.UPSTOX_CLIENT_SECRET || "";
   private redirectUri = process.env.UPSTOX_REDIRECT_URI || "http://localhost:5000/api/upstox/callback";
+  
+  // Store runtime configuration
+  private runtimeConfig: {
+    clientId?: string;
+    clientSecret?: string;
+    redirectUri?: string;
+  } = {};
 
   constructor() {
     if (!this.clientId || !this.clientSecret) {
@@ -41,12 +48,30 @@ class UpstoxService {
     };
   }
 
+  // Update runtime configuration
+  updateConfig(config: { clientId?: string; clientSecret?: string; redirectUri?: string }) {
+    this.runtimeConfig = { ...this.runtimeConfig, ...config };
+  }
+
+  // Get current configuration values (runtime overrides environment)
+  private getCurrentClientId(): string {
+    return this.runtimeConfig.clientId || this.clientId;
+  }
+
+  private getCurrentClientSecret(): string {
+    return this.runtimeConfig.clientSecret || this.clientSecret;
+  }
+
+  private getCurrentRedirectUri(): string {
+    return this.runtimeConfig.redirectUri || this.redirectUri;
+  }
+
   // Generate OAuth URL for user authentication
   getAuthUrl(state?: string): string {
     const params = new URLSearchParams({
       response_type: "code",
-      client_id: this.clientId,
-      redirect_uri: this.redirectUri,
+      client_id: this.getCurrentClientId(),
+      redirect_uri: this.getCurrentRedirectUri(),
       ...(state && { state }),
     });
     
@@ -63,9 +88,9 @@ class UpstoxService {
     const response = await axios.post(`${this.baseUrl}/login/authorization/token`, 
       new URLSearchParams({
         code: authorizationCode,
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        redirect_uri: this.redirectUri,
+        client_id: this.getCurrentClientId(),
+        client_secret: this.getCurrentClientSecret(),
+        redirect_uri: this.getCurrentRedirectUri(),
         grant_type: "authorization_code",
       }), {
         headers: {
@@ -88,8 +113,8 @@ class UpstoxService {
     const response = await axios.post(`${this.baseUrl}/login/authorization/token`,
       new URLSearchParams({
         refresh_token: refreshToken,
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
+        client_id: this.getCurrentClientId(),
+        client_secret: this.getCurrentClientSecret(),
         grant_type: "refresh_token",
       }), {
         headers: {

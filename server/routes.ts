@@ -372,8 +372,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "All configuration fields are required" });
       }
 
-      // In a real application, you would store these in environment variables or secure configuration
-      // For now, we'll just return a success response
+      // Update the Upstox service configuration
+      upstoxService.updateConfig({ clientId, clientSecret, redirectUri });
+      
       console.log("API Configuration updated:", { clientId, redirectUri });
       
       res.json({ 
