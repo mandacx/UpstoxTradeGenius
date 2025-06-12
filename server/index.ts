@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import MemoryStore from "memorystore";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -10,22 +11,27 @@ declare module 'express-session' {
   }
 }
 
+const MemStore = MemoryStore(session);
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Session configuration
+// Session configuration with memory store
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback-secret-for-dev',
+  store: new MemStore({
+    checkPeriod: 86400000 // prune expired entries every 24h
+  }),
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Set to true in production with HTTPS
-    httpOnly: false, // Allow frontend access for debugging
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: 'lax' // Allow cross-origin requests
+    secure: false,
+    httpOnly: false,
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: 'lax'
   },
-  name: 'trading.sid' // Custom session name
+  name: 'connect.sid'
 }));
 
 app.use((req, res, next) => {
