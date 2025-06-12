@@ -250,6 +250,9 @@ export default function Backtesting() {
           <DialogContent className="sm:max-w-[600px] bg-trading-card border-trading-border">
             <DialogHeader>
               <DialogTitle>Create New Backtest</DialogTitle>
+              <DialogDescription>
+                Configure and start a new backtest for your trading strategy.
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateBacktest} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -524,6 +527,9 @@ export default function Backtesting() {
             <DialogTitle>
               Backtest Trades - {selectedBacktest?.name}
             </DialogTitle>
+            <DialogDescription>
+              Detailed trade history and performance metrics for this backtest.
+            </DialogDescription>
           </DialogHeader>
           <div className="overflow-auto">
             {(selectedBacktestTrades as any[]) && (selectedBacktestTrades as any[]).length > 0 ? (
@@ -599,6 +605,9 @@ export default function Backtesting() {
         <DialogContent className="bg-trading-dark border-trading-border max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Backtest Parameters</DialogTitle>
+            <DialogDescription>
+              Modify parameters and create a new backtest with updated settings.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSaveEdit} className="space-y-4">
             <div>
