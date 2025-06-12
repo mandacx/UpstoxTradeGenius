@@ -128,11 +128,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
+  // Simple token-based auth endpoint
+  app.post("/api/auth/validate", async (req, res) => {
+    try {
+      const { authToken } = req.body;
+      if (!authToken) {
+        return res.status(401).json({ error: "No auth token provided" });
+      }
+      
+      // Find user by stored token (simple approach - storing in user record)
+      const users = await storage.getAllUsers();
+      const user = users.find(u => u.lastAuthToken === authToken);
+      
+      if (!user) {
+        return res.status(401).json({ error: "Invalid auth token" });
+      }
+      
+      console.log("Token validation successful for user:", user.id);
+      const { password, lastAuthToken, ...userResponse } = user;
+      res.json(userResponse);
+    } catch (error) {
+      console.error("Token validation error:", error);
+      res.status(500).json({ error: "Failed to validate token" });
+    }
+  });
+
   app.get("/api/auth/user", (req, res) => {
-    const authToken = req.cookies.auth_token;
-    console.log("Auth check - Session ID:", req.session.id, "User ID:", req.session.userId, "Auth Token:", authToken ? "present" : "missing");
+    const cookieAuthToken = req.cookies.auth_token;
+    const bearerToken = req.headers.authorization?.replace('Bearer ', '');
+    const authToken = cookieAuthToken || bearerToken;
     
-    // Check if user has valid session AND auth token
+    console.log("Auth check - Session ID:", req.session.id, "User ID:", req.session.userId, "Cookie Token:", cookieAuthToken ? "present" : "missing", "Bearer Token:", bearerToken ? "present" : "missing");
+    
+    // Check if user has valid session AND auth token (from either cookie or header)
     if (!req.session.userId || !authToken || req.session.authToken !== authToken) {
       console.log("No valid session or auth token found, returning 401");
       return res.status(401).json({ error: "Not authenticated" });
