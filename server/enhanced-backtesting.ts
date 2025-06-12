@@ -429,7 +429,17 @@ class EnhancedBacktestingEngine {
             trades.push(completedTrade);
             await storage.createBacktestTrade({
               backtestId,
-              ...completedTrade
+              symbol: completedTrade.symbol,
+              side: completedTrade.side,
+              quantity: completedTrade.quantity,
+              entryPrice: completedTrade.entryPrice.toString(),
+              exitPrice: completedTrade.exitPrice.toString(),
+              entryTime: new Date(completedTrade.entryTime),
+              exitTime: new Date(completedTrade.exitTime),
+              pnl: completedTrade.pnl.toString(),
+              pnlPercent: completedTrade.pnlPercent.toString(),
+              status: completedTrade.status,
+              reason: completedTrade.reason
             });
             
             currentCapital += pnl;
@@ -469,7 +479,17 @@ class EnhancedBacktestingEngine {
             trades.push(completedTrade);
             await storage.createBacktestTrade({
               backtestId,
-              ...completedTrade
+              symbol: completedTrade.symbol,
+              side: completedTrade.side,
+              quantity: completedTrade.quantity,
+              entryPrice: completedTrade.entryPrice.toString(),
+              exitPrice: completedTrade.exitPrice.toString(),
+              entryTime: new Date(completedTrade.entryTime),
+              exitTime: new Date(completedTrade.exitTime),
+              pnl: completedTrade.pnl.toString(),
+              pnlPercent: completedTrade.pnlPercent.toString(),
+              status: completedTrade.status,
+              reason: completedTrade.reason
             });
             
             currentCapital += pnl;
@@ -517,7 +537,17 @@ class EnhancedBacktestingEngine {
       trades.push(completedTrade);
       await storage.createBacktestTrade({
         backtestId,
-        ...completedTrade
+        symbol: completedTrade.symbol,
+        side: completedTrade.side,
+        quantity: completedTrade.quantity,
+        entryPrice: completedTrade.entryPrice.toString(),
+        exitPrice: completedTrade.exitPrice.toString(),
+        entryTime: new Date(completedTrade.entryTime),
+        exitTime: new Date(completedTrade.exitTime),
+        pnl: completedTrade.pnl.toString(),
+        pnlPercent: completedTrade.pnlPercent.toString(),
+        status: completedTrade.status,
+        reason: completedTrade.reason
       });
     }
 
