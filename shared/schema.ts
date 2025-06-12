@@ -18,6 +18,7 @@ export const users = pgTable("users", {
   subscriptionStatus: text("subscription_status").default("active"), // active, cancelled, expired
   subscriptionExpiry: timestamp("subscription_expiry"),
   trialEndsAt: timestamp("trial_ends_at"),
+  lastAuthToken: text("last_auth_token"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -65,6 +65,9 @@ export interface IStorage {
   getConfiguration(key: string): Promise<Configuration | undefined>;
   setConfiguration(config: InsertConfiguration): Promise<Configuration>;
   getAllConfigurations(): Promise<Configuration[]>;
+
+  // Additional user operations
+  getAllUsers(): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -336,6 +339,10 @@ export class DatabaseStorage implements IStorage {
 
   async getAllConfigurations(): Promise<Configuration[]> {
     return await db.select().from(configurations);
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
   }
 }
 

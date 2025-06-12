@@ -84,34 +84,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Invalid email or password" });
       }
       
-      // Create session and auth token
+      // Create simple auth token for localStorage-based auth
       const authToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
-      req.session.userId = user.id;
-      req.session.authToken = authToken;
       
-      req.session.save((saveErr) => {
-        if (saveErr) {
-          console.error("Session save error:", saveErr);
-          return res.status(500).json({ error: "Failed to create session" });
-        }
-        
-        console.log("Session created successfully:", req.session.id, "for user:", user.id);
-        
-        // Set auth token cookie
-        res.cookie('auth_token', authToken, {
-          httpOnly: false,
-          secure: false,
-          maxAge: 24 * 60 * 60 * 1000,
-          sameSite: 'lax',
-          path: '/'
-        });
-        
-        // Remove password from response
-        const { password: _, ...userResponse } = user;
-        res.json({
-          ...userResponse,
-          authToken: authToken
-        });
+      // Store token in database via direct SQL
+      await db.execute(sql`UPDATE users SET last_auth_token = ${authToken} WHERE id = ${user.id}`);
+      
+      console.log("Auth token created for user:", user.id, "Token:", authToken.substring(0, 8) + "...");
+      
+      // Remove password from response
+      const { password: _, ...userResponse } = user;
+      res.json({
+        ...userResponse,
+        authToken: authToken
       });
     } catch (error: any) {
       console.error("Login error:", error);
