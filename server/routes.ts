@@ -329,15 +329,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("User profile:", profile.data);
       
       // Store tokens in account management module
-      const expiryTime = new Date(Date.now() + (tokenData.expires_in * 1000));
+      // Handle expiry time - Upstox tokens are typically valid for 1 day
+      const expiryTime = tokenData.expires_in 
+        ? new Date(Date.now() + (tokenData.expires_in * 1000))
+        : new Date(Date.now() + (24 * 60 * 60 * 1000)); // Default to 24 hours
       console.log("Updating account with tokens...");
       
       await storage.updateAccount(userId, {
         upstoxAccessToken: tokenData.access_token,
-        upstoxRefreshToken: tokenData.refresh_token,
+        upstoxRefreshToken: tokenData.refresh_token || null,
         upstoxUserId: profile.data.user_id,
         upstoxTokenExpiry: expiryTime,
-        upstoxTokenType: tokenData.token_type,
+        upstoxTokenType: tokenData.token_type || 'Bearer',
       });
 
       // Update user status
