@@ -275,6 +275,34 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return newLog;
   }
+
+  // Configuration operations
+  async getConfiguration(key: string): Promise<Configuration | undefined> {
+    const [config] = await db.select().from(configurations).where(eq(configurations.key, key));
+    return config || undefined;
+  }
+
+  async setConfiguration(config: InsertConfiguration): Promise<Configuration> {
+    const existing = await this.getConfiguration(config.key);
+    if (existing) {
+      const [updated] = await db
+        .update(configurations)
+        .set({ ...config, updatedAt: new Date() })
+        .where(eq(configurations.key, config.key))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(configurations)
+        .values(config)
+        .returning();
+      return created;
+    }
+  }
+
+  async getAllConfigurations(): Promise<Configuration[]> {
+    return await db.select().from(configurations);
+  }
 }
 
 export const storage = new DatabaseStorage();

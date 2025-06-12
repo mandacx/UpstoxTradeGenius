@@ -6,10 +6,14 @@ import { setupWebSocket } from "./websocket";
 import { generateStrategy } from "./openai";
 import { runBacktest } from "./backtesting";
 import { upstoxService, getValidUpstoxToken } from "./upstox";
+import { configService } from "./config-service";
 import { insertStrategySchema, insertBacktestSchema, insertLogSchema, upstoxAuthSchema, upstoxAccountLinkSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+  
+  // Initialize configuration service
+  await configService.initialize();
   
   // Temporarily disable WebSocket to prevent crashes
   // const wss = new WebSocketServer({ server: httpServer });
@@ -390,6 +394,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/upstox/config", async (req, res) => {
+    try {
+      const config = await configService.getUpstoxConfig();
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching Upstox configuration:", error);
+      res.status(500).json({ error: "Failed to fetch configuration" });
+    }
+  });
+
   app.post("/api/upstox/update-config", async (req, res) => {
     try {
       const { clientId, clientSecret, redirectUri } = req.body;
@@ -399,10 +413,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "All configuration fields are required" });
       }
 
+      // Save configuration to database
+      await storage.setConfiguration({
+        key: "upstox_client_id",
+        value: clientId,
+        description: "Upstox API Client ID"
+      });
+
+      await storage.setConfiguration({
+        key: "upstox_client_secret", 
+        value: clientSecret,
+        description: "Upstox API Client Secret",
+        isSecret: true
+      });
+
+      await storage.setConfiguration({
+        key: "upstox_redirect_uri",
+        value: redirectUri,
+        description: "Upstox OAuth Redirect URI"
+      });
+
       // Update the Upstox service configuration
       upstoxService.updateConfig({ clientId, clientSecret, redirectUri });
       
-      console.log("API Configuration updated:", { clientId, redirectUri });
+      console.log("API Configuration updated and saved to database:", { clientId, redirectUri });
       
       res.json({ 
         message: "API configuration updated successfully",

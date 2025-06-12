@@ -41,6 +41,14 @@ export default function Account() {
     queryKey: ["/api/account"],
   });
 
+  const { data: savedConfig } = useQuery<{
+    clientId?: string;
+    redirectUri?: string;
+    hasClientSecret: boolean;
+  }>({
+    queryKey: ["/api/upstox/config"],
+  });
+
   const refreshTokenMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/upstox/refresh-token", {});
@@ -170,9 +178,9 @@ export default function Account() {
 
   const handleStartEdit = () => {
     setConfigForm({
-      clientId: 'd1ea1855-3820-424d-83b3-771e08c5b9cc',
-      clientSecret: 'a1b2c3d4e5f6g7h8i9j0',
-      redirectUri: `${window.location.origin}/api/upstox/callback`
+      clientId: savedConfig?.clientId || 'd1ea1855-3820-424d-83b3-771e08c5b9cc',
+      clientSecret: savedConfig?.hasClientSecret ? '••••••••••••••••' : 'a1b2c3d4e5f6g7h8i9j0',
+      redirectUri: savedConfig?.redirectUri || `${window.location.origin}/api/upstox/callback`
     });
     setIsEditingConfig(true);
   };
@@ -180,9 +188,9 @@ export default function Account() {
   const handleCancelEdit = () => {
     setIsEditingConfig(false);
     setConfigForm({
-      clientId: 'd1ea1855-3820-424d-83b3-771e08c5b9cc',
-      clientSecret: 'a1b2c3d4e5f6g7h8i9j0',
-      redirectUri: `${window.location.origin}/api/upstox/callback`
+      clientId: savedConfig?.clientId || 'd1ea1855-3820-424d-83b3-771e08c5b9cc',
+      clientSecret: savedConfig?.hasClientSecret ? '••••••••••••••••' : 'a1b2c3d4e5f6g7h8i9j0',
+      redirectUri: savedConfig?.redirectUri || `${window.location.origin}/api/upstox/callback`
     });
   };
 
