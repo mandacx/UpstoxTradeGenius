@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import cookieParser from "cookie-parser";
-import connectPg from "connect-pg-simple";
+import MemoryStore from "memorystore";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -13,26 +13,24 @@ declare module 'express-session' {
   }
 }
 
-const pgSession = connectPg(session);
+const MemStore = MemoryStore(session);
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-// Session configuration with database store
+// Session configuration with memory store
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback-secret-for-dev',
-  store: new pgSession({
-    conString: process.env.DATABASE_URL,
-    tableName: 'sessions',
-    createTableIfMissing: true
+  store: new MemStore({
+    checkPeriod: 86400000 // prune expired entries every 24h
   }),
   resave: false,
   saveUninitialized: false,
   cookie: {
     secure: false,
-    httpOnly: false,
+    httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000,
     sameSite: 'lax'
   },
