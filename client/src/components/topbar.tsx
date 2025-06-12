@@ -188,7 +188,7 @@ export default function Topbar() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("/api/auth/logout", "POST");
+      await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
       localStorage.removeItem("authToken");
