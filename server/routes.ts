@@ -347,11 +347,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log("Upstox account linked successfully for user:", userId);
-      // Redirect to dashboard with success message
-      res.redirect("/?upstox=linked");
+      // Redirect to account page with success message
+      res.redirect("/account?upstox=linked");
     } catch (error) {
       console.error("Error in Upstox callback:", error);
-      res.redirect("/?upstox=error&reason=" + encodeURIComponent(String((error as Error)?.message || 'Unknown error')));
+      res.redirect("/account?upstox=error&reason=" + encodeURIComponent(String((error as Error)?.message || 'Unknown error')));
     }
   });
 
@@ -408,9 +408,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { clientId, clientSecret, redirectUri } = req.body;
       
-      // Validate required fields
-      if (!clientId || !clientSecret || !redirectUri) {
-        return res.status(400).json({ error: "All configuration fields are required" });
+      // Validate required fields (client secret is optional for updates)
+      if (!clientId || !redirectUri) {
+        return res.status(400).json({ error: "Client ID and Redirect URI are required" });
       }
 
       // Save configuration to database
@@ -421,30 +421,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       await storage.setConfiguration({
-        key: "upstox_client_secret", 
-        value: clientSecret,
-        description: "Upstox API Client Secret",
-        isSecret: true
-      });
-
-      await storage.setConfiguration({
         key: "upstox_redirect_uri",
         value: redirectUri,
         description: "Upstox OAuth Redirect URI"
       });
 
+      // Only update client secret if provided
+      let clientSecretUpdated = false;
+      if (clientSecret && clientSecret !== '••••••••••••••••') {
+        await storage.setConfiguration({
+          key: "upstox_client_secret", 
+          value: clientSecret,
+          description: "Upstox API Client Secret",
+          isSecret: true
+        });
+        clientSecretUpdated = true;
+      }
+
+      // Get current configuration for Upstox service update
+      const currentSecret = await storage.getConfiguration("upstox_client_secret");
+      const configUpdate: any = { clientId, redirectUri };
+      if (currentSecret) {
+        configUpdate.clientSecret = currentSecret.value;
+      }
+
       // Update the Upstox service configuration
-      upstoxService.updateConfig({ clientId, clientSecret, redirectUri });
+      upstoxService.updateConfig(configUpdate);
       
-      console.log("API Configuration updated and saved to database:", { clientId, redirectUri });
+      console.log("API Configuration updated and saved to database:", { 
+        clientId, 
+        redirectUri, 
+        clientSecretUpdated 
+      });
       
       res.json({ 
         message: "API configuration updated successfully",
         config: {
           clientId,
           redirectUri,
-          // Don't return the secret in response
-          clientSecretUpdated: true
+          clientSecretUpdated
         }
       });
     } catch (error) {

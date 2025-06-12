@@ -197,7 +197,24 @@ export default function Account() {
 
   const handleSaveConfig = async () => {
     try {
-      await updateConfigMutation.mutateAsync(configForm);
+      // Don't send masked client secret, only send if it's been changed
+      const configToSave: any = { ...configForm };
+      if (configToSave.clientSecret === '••••••••••••••••') {
+        // If client secret is still masked, exclude it from the update
+        delete configToSave.clientSecret;
+      }
+      
+      // Only proceed if we have actual values to save
+      if (!configToSave.clientId || !configToSave.redirectUri) {
+        toast({
+          title: "Validation Error",
+          description: "Client ID and Redirect URI are required.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await updateConfigMutation.mutateAsync(configToSave as any);
     } catch (error) {
       console.error("Failed to save config:", error);
     }
