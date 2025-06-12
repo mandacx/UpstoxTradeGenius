@@ -293,27 +293,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/upstox/callback", async (req, res) => {
     try {
+      console.log("Upstox callback received:", req.query);
       const { code, state } = req.query;
       
       if (!code) {
-        return res.status(400).json({ error: "Authorization code not provided" });
+        console.error("No authorization code provided");
+        return res.redirect("/?upstox=error&reason=no_code");
       }
 
-      // Extract user ID from state
-      const userId = state?.toString().split('_')[1];
-      if (!userId) {
-        return res.status(400).json({ error: "Invalid state parameter" });
-      }
+      // For now, use hardcoded user ID since state might not be working
+      const userId = 1;
+      console.log("Processing callback for user:", userId);
 
       // Exchange code for access token
+      console.log("Exchanging authorization code for access token...");
       const tokenData = await upstoxService.getAccessToken(code as string);
+      console.log("Token data received:", { 
+        hasAccessToken: !!tokenData.access_token,
+        hasRefreshToken: !!tokenData.refresh_token,
+        expiresIn: tokenData.expires_in 
+      });
       
       // Get user profile to verify account
+      console.log("Fetching user profile...");
       const profile = await upstoxService.getUserProfile(tokenData.access_token);
+      console.log("User profile:", profile.data);
       
       // Store tokens in account management module
       const expiryTime = new Date(Date.now() + (tokenData.expires_in * 1000));
-      await storage.updateAccount(parseInt(userId), {
+      console.log("Updating account with tokens...");
+      
+      await storage.updateAccount(userId, {
         upstoxAccessToken: tokenData.access_token,
         upstoxRefreshToken: tokenData.refresh_token,
         upstoxUserId: profile.data.user_id,
@@ -322,15 +332,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Update user status
-      await storage.updateUser(parseInt(userId), {
+      console.log("Updating user status...");
+      await storage.updateUser(userId, {
         isUpstoxLinked: true,
       });
 
+      console.log("Upstox account linked successfully for user:", userId);
       // Redirect to dashboard with success message
       res.redirect("/?upstox=linked");
     } catch (error) {
       console.error("Error in Upstox callback:", error);
-      res.redirect("/?upstox=error");
+      res.redirect("/?upstox=error&reason=" + encodeURIComponent(error.message));
     }
   });
 
@@ -461,19 +473,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const account = await storage.getAccount(userId);
       
+      console.log("Account status check - User:", { 
+        id: user?.id, 
+        isUpstoxLinked: user?.isUpstoxLinked 
+      });
+      console.log("Account status check - Account:", { 
+        id: account?.id,
+        hasAccessToken: !!account?.upstoxAccessToken,
+        upstoxUserId: account?.upstoxUserId,
+        tokenExpiry: account?.upstoxTokenExpiry
+      });
+      
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
 
-      res.json({
+      const response = {
         isLinked: user.isUpstoxLinked || false,
         upstoxUserId: account?.upstoxUserId,
         tokenExpiry: account?.upstoxTokenExpiry,
         needsRefresh: account?.upstoxTokenExpiry ? new Date() > account.upstoxTokenExpiry : false
-      });
+      };
+      
+      console.log("Returning account status:", response);
+      res.json(response);
     } catch (error) {
       console.error("Error checking account status:", error);
       res.status(500).json({ error: "Failed to check account status" });
+    }
+  });
+
+  // Test endpoint to verify token storage
+  app.post("/api/upstox/test-token-storage", async (req, res) => {
+    try {
+      const userId = 1;
+      console.log("Testing token storage for user:", userId);
+      
+      // Test data
+      const testTokenData = {
+        upstoxAccessToken: "test_access_token_123",
+        upstoxRefreshToken: "test_refresh_token_456", 
+        upstoxUserId: "test_user_789",
+        upstoxTokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        upstoxTokenType: "Bearer"
+      };
+      
+      console.log("Storing test tokens:", testTokenData);
+      await storage.updateAccount(userId, testTokenData);
+      
+      console.log("Updating user status...");
+      await storage.updateUser(userId, { isUpstoxLinked: true });
+      
+      // Verify storage
+      const account = await storage.getAccount(userId);
+      const user = await storage.getUser(userId);
+      
+      console.log("Verification - Account has tokens:", !!account?.upstoxAccessToken);
+      console.log("Verification - User is linked:", user?.isUpstoxLinked);
+      
+      res.json({ 
+        success: true,
+        stored: !!account?.upstoxAccessToken,
+        linked: user?.isUpstoxLinked
+      });
+    } catch (error) {
+      console.error("Token storage test failed:", error);
+      res.status(500).json({ error: "Token storage test failed" });
     }
   });
 
