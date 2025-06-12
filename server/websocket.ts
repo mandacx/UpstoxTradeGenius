@@ -165,13 +165,14 @@ class WebSocketManager {
         // Fetch quotes for subscribed symbols
         for (const symbol of Array.from(subscribedSymbols)) {
           try {
-            const quote = await upstoxService.getQuote(symbol);
-            this.broadcast({
-              type: "market_data",
-              channel: `quote:${symbol}`,
-              data: quote,
-              timestamp: new Date().toISOString(),
-            }, `quote:${symbol}`);
+            // Skip market data updates since WebSocket is disabled
+            // const quote = await upstoxService.getQuote(symbol, accessToken);
+            // this.broadcast({
+            //   type: "market_data",
+            //   channel: `quote:${symbol}`,
+            //   data: quote,
+            //   timestamp: new Date().toISOString(),
+            // }, `quote:${symbol}`);
           } catch (error) {
             console.error(`Error fetching quote for ${symbol}:`, error);
           }
