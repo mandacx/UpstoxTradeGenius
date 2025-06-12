@@ -101,6 +101,7 @@ export default function Account() {
     },
     onSuccess: (data) => {
       setIsEditingConfig(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/upstox/config"] });
       toast({
         title: "Configuration Updated",
         description: "Your Upstox API configuration has been updated successfully.",
@@ -210,11 +211,19 @@ export default function Account() {
   };
 
   useEffect(() => {
-    // Initialize redirectUri with current origin
-    setConfigForm(prev => ({
-      ...prev,
-      redirectUri: `${window.location.origin}/api/upstox/callback`
-    }));
+    // Initialize form with saved configuration or defaults
+    if (savedConfig) {
+      setConfigForm({
+        clientId: savedConfig.clientId || 'd1ea1855-3820-424d-83b3-771e08c5b9cc',
+        clientSecret: savedConfig.hasClientSecret ? '••••••••••••••••' : 'a1b2c3d4e5f6g7h8i9j0',
+        redirectUri: savedConfig.redirectUri || `${window.location.origin}/api/upstox/callback`
+      });
+    } else {
+      setConfigForm(prev => ({
+        ...prev,
+        redirectUri: `${window.location.origin}/api/upstox/callback`
+      }));
+    }
 
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('upstox') === 'linked') {
@@ -231,7 +240,7 @@ export default function Account() {
       });
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [toast]);
+  }, [savedConfig, toast]);
 
   if (statusLoading) {
     return (
