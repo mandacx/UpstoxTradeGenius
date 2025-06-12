@@ -4,14 +4,22 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
   upstoxUserId: text("upstox_user_id"),
   upstoxAccessToken: text("upstox_access_token"),
   upstoxRefreshToken: text("upstox_refresh_token"),
   upstoxTokenExpiry: timestamp("upstox_token_expiry"),
   isUpstoxLinked: boolean("is_upstox_linked").default(false),
+  subscriptionPlan: text("subscription_plan").default("demo"), // demo, basic, pro, enterprise
+  subscriptionStatus: text("subscription_status").default("active"), // active, cancelled, expired
+  subscriptionExpiry: timestamp("subscription_expiry"),
+  trialEndsAt: timestamp("trial_ends_at"),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const strategies = pgTable("strategies", {
