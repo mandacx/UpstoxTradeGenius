@@ -168,22 +168,30 @@ class UpstoxService {
     resolution: string = "1minute"
   ): Promise<HistoricalDataPoint[]> {
     try {
+      console.log(`Fetching historical data: ${symbol}, ${resolution}, ${from} to ${to}`);
       const response = await axios.get(
         `${this.baseUrl}/historical-candle/${symbol}/${resolution}/${to}/${from}`,
         { headers: this.getHeaders(accessToken) }
       );
 
-      return response.data.data.candles.map((candle: any[]) => ({
-        timestamp: candle[0],
-        open: candle[1],
-        high: candle[2],
-        low: candle[3],
-        close: candle[4],
-        volume: candle[5],
+      if (!response.data || !response.data.data || !response.data.data.candles) {
+        throw new Error('Invalid response format from Upstox API');
+      }
+
+      const candles = response.data.data.candles.map((candle: any[]) => ({
+        timestamp: new Date(candle[0]).toISOString(),
+        open: Number(candle[1]),
+        high: Number(candle[2]),
+        low: Number(candle[3]),
+        close: Number(candle[4]),
+        volume: Number(candle[5] || 0),
       }));
-    } catch (error) {
-      console.error(`Error fetching historical data for ${symbol}:`, error);
-      throw new Error(`Failed to fetch historical data for ${symbol}`);
+
+      console.log(`Successfully fetched ${candles.length} candles for ${symbol}`);
+      return candles;
+    } catch (error: any) {
+      console.error(`Error fetching historical data for ${symbol}:`, error.response?.data || error.message);
+      throw new Error(`Failed to fetch historical data for ${symbol}: ${error.response?.data?.message || error.message}`);
     }
   }
 
