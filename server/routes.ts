@@ -314,8 +314,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: newName,
         symbol: updateData.symbol || originalBacktest.symbol,
         timeframe: updateData.timeframe || originalBacktest.timeframe,
-        startDate: updateData.startDate || originalBacktest.startDate,
-        endDate: updateData.endDate || originalBacktest.endDate,
+        startDate: updateData.startDate ? new Date(updateData.startDate) : originalBacktest.startDate,
+        endDate: updateData.endDate ? new Date(updateData.endDate) : originalBacktest.endDate,
         initialCapital: updateData.initialCapital || originalBacktest.initialCapital,
         status: "pending"
       });
