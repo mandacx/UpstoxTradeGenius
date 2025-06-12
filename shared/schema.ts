@@ -7,6 +7,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  role: text("role").default("user"), // user, admin
   firstName: text("first_name"),
   lastName: text("last_name"),
   profileImageUrl: text("profile_image_url"),
@@ -23,6 +24,7 @@ export const users = pgTable("users", {
   subscriptionExpiry: timestamp("subscription_expiry"),
   trialEndsAt: timestamp("trial_ends_at"),
   lastAuthToken: text("last_auth_token"),
+  lastActive: timestamp("last_active"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
