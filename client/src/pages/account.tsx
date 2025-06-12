@@ -4,7 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle2, AlertCircle, Unlink, ExternalLink, Link, Copy, Eye, EyeOff } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { CheckCircle2, AlertCircle, Unlink, ExternalLink, Link, Copy, Eye, EyeOff, Edit, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -19,6 +21,12 @@ export default function Account() {
   const [isLinking, setIsLinking] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [showClientSecret, setShowClientSecret] = useState(false);
+  const [isEditingConfig, setIsEditingConfig] = useState(false);
+  const [configForm, setConfigForm] = useState({
+    clientId: 'd1ea1855-3820-424d-83b3-771e08c5b9cc',
+    clientSecret: 'a1b2c3d4e5f6g7h8i9j0',
+    redirectUri: ''
+  });
   const { toast } = useToast();
 
   const { data: upstoxStatus, isLoading: statusLoading } = useQuery<UpstoxStatus>({
@@ -70,6 +78,27 @@ export default function Account() {
       toast({
         title: "Unlink Failed",
         description: "Failed to unlink Upstox account. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateConfigMutation = useMutation({
+    mutationFn: async (config: typeof configForm) => {
+      const res = await apiRequest("POST", "/api/upstox/update-config", config);
+      return res.json();
+    },
+    onSuccess: () => {
+      setIsEditingConfig(false);
+      toast({
+        title: "Configuration Updated",
+        description: "Your Upstox API configuration has been updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update API configuration. Please try again.",
         variant: "destructive",
       });
     },
@@ -135,7 +164,46 @@ export default function Account() {
     });
   };
 
+  const handleStartEdit = () => {
+    setConfigForm({
+      clientId: 'd1ea1855-3820-424d-83b3-771e08c5b9cc',
+      clientSecret: 'a1b2c3d4e5f6g7h8i9j0',
+      redirectUri: `${window.location.origin}/api/upstox/callback`
+    });
+    setIsEditingConfig(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingConfig(false);
+    setConfigForm({
+      clientId: 'd1ea1855-3820-424d-83b3-771e08c5b9cc',
+      clientSecret: 'a1b2c3d4e5f6g7h8i9j0',
+      redirectUri: `${window.location.origin}/api/upstox/callback`
+    });
+  };
+
+  const handleSaveConfig = async () => {
+    try {
+      await updateConfigMutation.mutateAsync(configForm);
+    } catch (error) {
+      console.error("Failed to save config:", error);
+    }
+  };
+
+  const handleConfigChange = (field: keyof typeof configForm, value: string) => {
+    setConfigForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   useEffect(() => {
+    // Initialize redirectUri with current origin
+    setConfigForm(prev => ({
+      ...prev,
+      redirectUri: `${window.location.origin}/api/upstox/callback`
+    }));
+
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('upstox') === 'linked') {
       toast({
@@ -234,64 +302,165 @@ export default function Account() {
             <div className="border rounded-lg p-4 bg-muted/20">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">API Configuration</h3>
-                <Badge variant="secondary">Production</Badge>
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-muted-foreground">Client ID</p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">Production</Badge>
+                  {!isEditingConfig ? (
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      onClick={() => copyToClipboard('d1ea1855-3820-424d-83b3-771e08c5b9cc', 'Client ID')}
+                      onClick={handleStartEdit}
+                      className="h-8"
                     >
-                      <Copy className="w-3 h-3" />
+                      <Edit className="w-3 h-3 mr-1" />
+                      Edit
                     </Button>
-                  </div>
-                  <p className="font-mono text-sm bg-background p-2 rounded border">
-                    d1ea1855-3820-424d-83b3-771e08c5b9cc
-                  </p>
+                  ) : (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSaveConfig}
+                        disabled={updateConfigMutation.isPending}
+                        className="h-8"
+                      >
+                        <Save className="w-3 h-3 mr-1" />
+                        Save
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancelEdit}
+                        className="h-8"
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-4">
+                {/* Client ID */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-muted-foreground">Client Secret</p>
-                    <div className="flex gap-1">
+                    <Label className="text-sm text-muted-foreground">Client ID</Label>
+                    {!isEditingConfig && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(configForm.clientId, 'Client ID')}
+                      >
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                  {isEditingConfig ? (
+                    <Input
+                      value={configForm.clientId}
+                      onChange={(e) => handleConfigChange('clientId', e.target.value)}
+                      placeholder="Enter Upstox Client ID"
+                      className="font-mono text-sm"
+                    />
+                  ) : (
+                    <p className="font-mono text-sm bg-background p-2 rounded border">
+                      {configForm.clientId}
+                    </p>
+                  )}
+                </div>
+
+                {/* Client Secret */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm text-muted-foreground">Client Secret</Label>
+                    {!isEditingConfig && (
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowClientSecret(!showClientSecret)}
+                        >
+                          {showClientSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(configForm.clientSecret, 'Client Secret')}
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  {isEditingConfig ? (
+                    <Input
+                      type={showClientSecret ? "text" : "password"}
+                      value={configForm.clientSecret}
+                      onChange={(e) => handleConfigChange('clientSecret', e.target.value)}
+                      placeholder="Enter Upstox Client Secret"
+                      className="font-mono text-sm"
+                    />
+                  ) : (
+                    <p className="font-mono text-sm bg-background p-2 rounded border">
+                      {showClientSecret ? configForm.clientSecret : '••••••••••••••••••••'}
+                    </p>
+                  )}
+                  {isEditingConfig && (
+                    <div className="flex items-center gap-2 mt-1">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setShowClientSecret(!showClientSecret)}
+                        className="h-6 px-2 text-xs"
                       >
-                        {showClientSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        {showClientSecret ? <EyeOff className="w-2 h-2 mr-1" /> : <Eye className="w-2 h-2 mr-1" />}
+                        {showClientSecret ? "Hide" : "Show"}
                       </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Redirect URI */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm text-muted-foreground">Redirect URI</Label>
+                    {!isEditingConfig && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => copyToClipboard('••••••••••••••••', 'Client Secret')}
+                        onClick={() => copyToClipboard(configForm.redirectUri || `${window.location.origin}/api/upstox/callback`, 'Redirect URI')}
                       >
                         <Copy className="w-3 h-3" />
                       </Button>
-                    </div>
+                    )}
                   </div>
-                  <p className="font-mono text-sm bg-background p-2 rounded border">
-                    {showClientSecret ? 'a1b2c3d4e5f6g7h8i9j0' : '••••••••••••••••••••'}
-                  </p>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-muted-foreground">Redirect URI</p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyToClipboard(`${window.location.origin}/api/upstox/callback`, 'Redirect URI')}
-                    >
-                      <Copy className="w-3 h-3" />
-                    </Button>
-                  </div>
-                  <p className="font-mono text-sm bg-background p-2 rounded border">
-                    {window.location.origin}/api/upstox/callback
-                  </p>
+                  {isEditingConfig ? (
+                    <Input
+                      value={configForm.redirectUri}
+                      onChange={(e) => handleConfigChange('redirectUri', e.target.value)}
+                      placeholder="Enter redirect URI"
+                      className="font-mono text-sm"
+                    />
+                  ) : (
+                    <p className="font-mono text-sm bg-background p-2 rounded border">
+                      {configForm.redirectUri || `${window.location.origin}/api/upstox/callback`}
+                    </p>
+                  )}
+                  {isEditingConfig && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      This should match the redirect URI configured in your Upstox app settings
+                    </p>
+                  )}
                 </div>
               </div>
+
+              {isEditingConfig && (
+                <Alert className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Changes to API configuration will require re-linking your Upstox account if it's currently connected.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
 
             {upstoxStatus?.isLinked ? (
