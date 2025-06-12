@@ -257,7 +257,10 @@ class EnhancedBacktestingEngine {
       }
 
       console.log(`Retrieved ${data.length} candles for ${symbol}`);
-      return this.formatUpstoxData(data);
+      const formattedData = this.formatUpstoxData(data);
+      // Sort data chronologically (oldest first)
+      formattedData.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      return formattedData;
       
     } catch (error) {
       console.error(`Failed to fetch Upstox data for ${symbol}:`, error);
@@ -490,6 +493,15 @@ class EnhancedBacktestingEngine {
         if (signal.action === 'BUY' && currentPosition <= 0) {
           // Close short position if any
           if (openTrade && openTrade.side === 'SELL') {
+            // Ensure exit time is after entry time
+            const entryTime = new Date(openTrade.entryTime);
+            const exitTime = new Date(currentCandle.timestamp);
+            
+            if (exitTime <= entryTime) {
+              console.warn(`Invalid timing: exit ${exitTime.toISOString()} <= entry ${entryTime.toISOString()}`);
+              continue;
+            }
+            
             // Validate exit price is reasonable
             if (!isValidPrice(openTrade.entryPrice, currentCandle.close)) {
               console.warn(`Skipping unrealistic trade: entry ${openTrade.entryPrice}, exit ${currentCandle.close}`);
@@ -506,7 +518,7 @@ class EnhancedBacktestingEngine {
               pnl,
               pnlPercent,
               status: 'closed',
-              reason: signal.reason || 'Strategy signal'
+              reason: `Short Exit - RSI ${currentRSI?.toFixed(1)}`
             };
             
             trades.push(completedTrade);
@@ -546,6 +558,15 @@ class EnhancedBacktestingEngine {
         } else if (signal.action === 'SELL' && currentPosition >= 0) {
           // Close long position if any
           if (openTrade && openTrade.side === 'BUY') {
+            // Ensure exit time is after entry time
+            const entryTime = new Date(openTrade.entryTime);
+            const exitTime = new Date(currentCandle.timestamp);
+            
+            if (exitTime <= entryTime) {
+              console.warn(`Invalid timing: exit ${exitTime.toISOString()} <= entry ${entryTime.toISOString()}`);
+              continue;
+            }
+            
             // Validate exit price is reasonable
             if (!isValidPrice(openTrade.entryPrice, currentCandle.close)) {
               console.warn(`Skipping unrealistic trade: entry ${openTrade.entryPrice}, exit ${currentCandle.close}`);
@@ -562,7 +583,7 @@ class EnhancedBacktestingEngine {
               pnl,
               pnlPercent,
               status: 'closed',
-              reason: signal.reason || 'Strategy signal'
+              reason: `Long Exit - RSI ${currentRSI?.toFixed(1)}`
             };
             
             trades.push(completedTrade);
@@ -609,14 +630,18 @@ class EnhancedBacktestingEngine {
     if (openTrade) {
       const lastCandle = historicalData[historicalData.length - 1];
       
+      // Ensure exit time is after entry time
+      const entryTime = new Date(openTrade.entryTime);
+      const exitTime = new Date(lastCandle.timestamp);
+      
       // Price validation helper
       const isValidPrice = (entryPrice: number, exitPrice: number) => {
         const priceChange = Math.abs((exitPrice - entryPrice) / entryPrice);
         return priceChange <= 0.5; // Max 50% price change per trade
       };
       
-      // Validate exit price is reasonable for end-of-backtest closing
-      if (isValidPrice(openTrade.entryPrice, lastCandle.close)) {
+      // Only close if timing and price are valid
+      if (exitTime > entryTime && isValidPrice(openTrade.entryPrice, lastCandle.close)) {
         const pnl = openTrade.side === 'BUY' 
           ? (lastCandle.close - openTrade.entryPrice) * openTrade.quantity
           : (openTrade.entryPrice - lastCandle.close) * openTrade.quantity;
