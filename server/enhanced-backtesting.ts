@@ -426,12 +426,6 @@ class EnhancedBacktestingEngine {
           })()
         `);
 
-        // Price validation helper
-        const isValidPrice = (entryPrice: number, exitPrice: number) => {
-          const priceChange = Math.abs((exitPrice - entryPrice) / entryPrice);
-          return priceChange <= 0.5; // Max 50% price change per trade
-        };
-
         // Process trading signals
         if (signal.action === 'BUY' && currentPosition <= 0) {
           // Close short position if any
@@ -550,6 +544,12 @@ class EnhancedBacktestingEngine {
         // Continue with next candle
       }
     }
+
+    // Price validation helper
+    const isValidPrice = (entryPrice: number, exitPrice: number) => {
+      const priceChange = Math.abs((exitPrice - entryPrice) / entryPrice);
+      return priceChange <= 0.5; // Max 50% price change per trade
+    };
 
     // Close any remaining open position
     if (openTrade) {

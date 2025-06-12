@@ -32,7 +32,7 @@ export default function Backtesting() {
   });
 
   const { data: selectedBacktestTrades = [] } = useQuery<any[]>({
-    queryKey: ["/api/backtests", selectedBacktest?.id, "trades"],
+    queryKey: [`/api/backtests/${selectedBacktest?.id}/trades`],
     enabled: !!selectedBacktest,
   });
 
