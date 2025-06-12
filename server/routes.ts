@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupWebSocket } from "./websocket";
 import { generateStrategy } from "./openai";
 import { runBacktest } from "./backtesting";
-import { upstoxService } from "./upstox";
+import { upstoxService, getValidUpstoxToken } from "./upstox";
 import { insertStrategySchema, insertBacktestSchema, insertLogSchema, upstoxAuthSchema, upstoxAccountLinkSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -434,12 +434,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = 1; // In real app, get from session
       
-      // Remove Upstox credentials
-      await storage.updateUser(userId, {
-        upstoxUserId: null,
+      // Remove Upstox credentials from account
+      await storage.updateAccount(userId, {
         upstoxAccessToken: null,
         upstoxRefreshToken: null,
+        upstoxUserId: null,
         upstoxTokenExpiry: null,
+        upstoxTokenType: null,
+      });
+
+      // Update user status
+      await storage.updateUser(userId, {
         isUpstoxLinked: false,
       });
 
@@ -469,6 +474,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error checking account status:", error);
       res.status(500).json({ error: "Failed to check account status" });
+    }
+  });
+
+  // Real Upstox API endpoints using authenticated tokens
+  app.get("/api/upstox/portfolio", async (req, res) => {
+    try {
+      const userId = 1; // In real app, get from session
+      const accessToken = await getValidUpstoxToken(userId, storage);
+      
+      if (!accessToken) {
+        return res.status(401).json({ error: "Upstox account not linked or token expired" });
+      }
+
+      const portfolio = await upstoxService.getPortfolio(accessToken);
+      res.json(portfolio);
+    } catch (error) {
+      console.error("Error fetching portfolio:", error);
+      res.status(500).json({ error: "Failed to fetch portfolio data" });
+    }
+  });
+
+  app.get("/api/upstox/positions", async (req, res) => {
+    try {
+      const userId = 1; // In real app, get from session
+      const accessToken = await getValidUpstoxToken(userId, storage);
+      
+      if (!accessToken) {
+        return res.status(401).json({ error: "Upstox account not linked or token expired" });
+      }
+
+      const positions = await upstoxService.getPositions(accessToken);
+      res.json(positions);
+    } catch (error) {
+      console.error("Error fetching positions:", error);
+      res.status(500).json({ error: "Failed to fetch positions data" });
+    }
+  });
+
+  app.get("/api/upstox/funds", async (req, res) => {
+    try {
+      const userId = 1; // In real app, get from session
+      const accessToken = await getValidUpstoxToken(userId, storage);
+      
+      if (!accessToken) {
+        return res.status(401).json({ error: "Upstox account not linked or token expired" });
+      }
+
+      const funds = await upstoxService.getFunds(accessToken);
+      res.json(funds);
+    } catch (error) {
+      console.error("Error fetching funds:", error);
+      res.status(500).json({ error: "Failed to fetch funds data" });
+    }
+  });
+
+  app.get("/api/upstox/orders", async (req, res) => {
+    try {
+      const userId = 1; // In real app, get from session
+      const accessToken = await getValidUpstoxToken(userId, storage);
+      
+      if (!accessToken) {
+        return res.status(401).json({ error: "Upstox account not linked or token expired" });
+      }
+
+      const orders = await upstoxService.getOrders(accessToken);
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      res.status(500).json({ error: "Failed to fetch orders data" });
+    }
+  });
+
+  app.get("/api/upstox/trades", async (req, res) => {
+    try {
+      const userId = 1; // In real app, get from session
+      const accessToken = await getValidUpstoxToken(userId, storage);
+      
+      if (!accessToken) {
+        return res.status(401).json({ error: "Upstox account not linked or token expired" });
+      }
+
+      const trades = await upstoxService.getTrades(accessToken);
+      res.json(trades);
+    } catch (error) {
+      console.error("Error fetching trades:", error);
+      res.status(500).json({ error: "Failed to fetch trades data" });
+    }
+  });
+
+  app.get("/api/upstox/quote/:symbol", async (req, res) => {
+    try {
+      const userId = 1; // In real app, get from session
+      const { symbol } = req.params;
+      const accessToken = await getValidUpstoxToken(userId, storage);
+      
+      if (!accessToken) {
+        return res.status(401).json({ error: "Upstox account not linked or token expired" });
+      }
+
+      const quote = await upstoxService.getQuote(symbol, accessToken);
+      res.json(quote);
+    } catch (error) {
+      console.error("Error fetching quote:", error);
+      res.status(500).json({ error: "Failed to fetch quote data" });
+    }
+  });
+
+  app.post("/api/upstox/place-order", async (req, res) => {
+    try {
+      const userId = 1; // In real app, get from session
+      const accessToken = await getValidUpstoxToken(userId, storage);
+      
+      if (!accessToken) {
+        return res.status(401).json({ error: "Upstox account not linked or token expired" });
+      }
+
+      const orderData = req.body;
+      const result = await upstoxService.placeOrder({ ...orderData, accessToken });
+      res.json(result);
+    } catch (error) {
+      console.error("Error placing order:", error);
+      res.status(500).json({ error: "Failed to place order" });
     }
   });
 

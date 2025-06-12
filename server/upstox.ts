@@ -279,4 +279,41 @@ class UpstoxService {
   }
 }
 
+// Helper function to get valid access token with auto-refresh
+export async function getValidUpstoxToken(userId: number, storage: any): Promise<string | null> {
+  const account = await storage.getAccount(userId);
+  
+  if (!account?.upstoxAccessToken) {
+    return null;
+  }
+
+  // Check if token is expired or will expire in the next 5 minutes
+  const now = new Date();
+  const expiryTime = account.upstoxTokenExpiry;
+  const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+  
+  if (expiryTime && expiryTime <= fiveMinutesFromNow && account.upstoxRefreshToken) {
+    try {
+      // Refresh the token
+      const tokenData = await upstoxService.refreshAccessToken(account.upstoxRefreshToken);
+      const newExpiryTime = new Date(Date.now() + (tokenData.expires_in * 1000));
+      
+      // Update account with new token
+      await storage.updateAccount(userId, {
+        upstoxAccessToken: tokenData.access_token,
+        upstoxRefreshToken: tokenData.refresh_token || account.upstoxRefreshToken,
+        upstoxTokenExpiry: newExpiryTime,
+        upstoxTokenType: tokenData.token_type,
+      });
+      
+      return tokenData.access_token;
+    } catch (error) {
+      console.error("Failed to refresh token:", error);
+      return null;
+    }
+  }
+  
+  return account.upstoxAccessToken;
+}
+
 export const upstoxService = new UpstoxService();
