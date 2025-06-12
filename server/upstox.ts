@@ -23,27 +23,98 @@ interface HistoricalDataPoint {
 
 class UpstoxService {
   private baseUrl = "https://api.upstox.com/v2";
-  private accessToken: string;
+  private clientId = process.env.UPSTOX_CLIENT_ID || "";
+  private clientSecret = process.env.UPSTOX_CLIENT_SECRET || "";
+  private redirectUri = process.env.UPSTOX_REDIRECT_URI || "http://localhost:5000/api/upstox/callback";
 
   constructor() {
-    this.accessToken = process.env.UPSTOX_ACCESS_TOKEN || "";
-    if (!this.accessToken) {
-      console.warn("UPSTOX_ACCESS_TOKEN not provided. Market data features will not work.");
+    if (!this.clientId || !this.clientSecret) {
+      console.warn("UPSTOX_CLIENT_ID and UPSTOX_CLIENT_SECRET not provided. OAuth features will not work.");
     }
   }
 
-  private getHeaders() {
+  private getHeaders(accessToken?: string) {
     return {
-      'Authorization': `Bearer ${this.accessToken}`,
+      'Authorization': accessToken ? `Bearer ${accessToken}` : '',
       'Accept': 'application/json',
+      'Content-Type': 'application/json',
     };
   }
 
-  async getQuote(symbol: string): Promise<UpstoxQuote> {
+  // Generate OAuth URL for user authentication
+  getAuthUrl(state?: string): string {
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: this.clientId,
+      redirect_uri: this.redirectUri,
+      ...(state && { state }),
+    });
+    
+    return `https://api.upstox.com/v2/login/authorization/dialog?${params}`;
+  }
+
+  // Exchange authorization code for access token
+  async getAccessToken(authorizationCode: string): Promise<{
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+    refresh_token?: string;
+  }> {
+    const response = await axios.post(`${this.baseUrl}/login/authorization/token`, 
+      new URLSearchParams({
+        code: authorizationCode,
+        client_id: this.clientId,
+        client_secret: this.clientSecret,
+        redirect_uri: this.redirectUri,
+        grant_type: "authorization_code",
+      }), {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        }
+      }
+    );
+
+    return response.data;
+  }
+
+  // Refresh access token
+  async refreshAccessToken(refreshToken: string): Promise<{
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+    refresh_token?: string;
+  }> {
+    const response = await axios.post(`${this.baseUrl}/login/authorization/token`,
+      new URLSearchParams({
+        refresh_token: refreshToken,
+        client_id: this.clientId,
+        client_secret: this.clientSecret,
+        grant_type: "refresh_token",
+      }), {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        }
+      }
+    );
+
+    return response.data;
+  }
+
+  // Get user profile
+  async getUserProfile(accessToken: string): Promise<any> {
+    const response = await axios.get(`${this.baseUrl}/user/profile`, {
+      headers: this.getHeaders(accessToken)
+    });
+    return response.data;
+  }
+
+  async getQuote(symbol: string, accessToken: string): Promise<UpstoxQuote> {
     try {
       const response = await axios.get(
         `${this.baseUrl}/market-quote/quotes?symbol=${symbol}`,
-        { headers: this.getHeaders() }
+        { headers: this.getHeaders(accessToken) }
       );
 
       const data = response.data.data[symbol];
@@ -68,12 +139,13 @@ class UpstoxService {
     symbol: string,
     from: string,
     to: string,
+    accessToken: string,
     resolution: string = "1minute"
   ): Promise<HistoricalDataPoint[]> {
     try {
       const response = await axios.get(
         `${this.baseUrl}/historical-candle/${symbol}/${resolution}/${to}/${from}`,
-        { headers: this.getHeaders() }
+        { headers: this.getHeaders(accessToken) }
       );
 
       return response.data.data.candles.map((candle: any[]) => ({
@@ -90,11 +162,11 @@ class UpstoxService {
     }
   }
 
-  async getPortfolio(): Promise<any> {
+  async getPortfolio(accessToken: string): Promise<any> {
     try {
       const response = await axios.get(
         `${this.baseUrl}/portfolio/long-term-holdings`,
-        { headers: this.getHeaders() }
+        { headers: this.getHeaders(accessToken) }
       );
       return response.data.data;
     } catch (error) {
@@ -103,11 +175,11 @@ class UpstoxService {
     }
   }
 
-  async getPositions(): Promise<any> {
+  async getPositions(accessToken: string): Promise<any> {
     try {
       const response = await axios.get(
         `${this.baseUrl}/portfolio/short-term-positions`,
-        { headers: this.getHeaders() }
+        { headers: this.getHeaders(accessToken) }
       );
       return response.data.data;
     } catch (error) {
@@ -116,11 +188,11 @@ class UpstoxService {
     }
   }
 
-  async getFunds(): Promise<any> {
+  async getFunds(accessToken: string): Promise<any> {
     try {
       const response = await axios.get(
         `${this.baseUrl}/user/get-funds-and-margin`,
-        { headers: this.getHeaders() }
+        { headers: this.getHeaders(accessToken) }
       );
       return response.data.data;
     } catch (error) {
@@ -141,12 +213,12 @@ class UpstoxService {
     disclosed_quantity: number;
     trigger_price: number;
     is_amo: boolean;
-  }): Promise<any> {
+  }, accessToken: string): Promise<any> {
     try {
       const response = await axios.post(
         `${this.baseUrl}/order/place`,
         orderData,
-        { headers: this.getHeaders() }
+        { headers: this.getHeaders(accessToken) }
       );
       return response.data;
     } catch (error) {
@@ -155,11 +227,11 @@ class UpstoxService {
     }
   }
 
-  async getOrders(): Promise<any> {
+  async getOrders(accessToken: string): Promise<any> {
     try {
       const response = await axios.get(
         `${this.baseUrl}/order/retrieve-all`,
-        { headers: this.getHeaders() }
+        { headers: this.getHeaders(accessToken) }
       );
       return response.data.data;
     } catch (error) {
@@ -168,11 +240,11 @@ class UpstoxService {
     }
   }
 
-  async getTrades(): Promise<any> {
+  async getTrades(accessToken: string): Promise<any> {
     try {
       const response = await axios.get(
         `${this.baseUrl}/order/trades/get-trade-book`,
-        { headers: this.getHeaders() }
+        { headers: this.getHeaders(accessToken) }
       );
       return response.data.data;
     } catch (error) {

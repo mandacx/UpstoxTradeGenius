@@ -6,7 +6,7 @@ import { setupWebSocket } from "./websocket";
 import { generateStrategy } from "./openai";
 import { runBacktest } from "./backtesting";
 import { upstoxService } from "./upstox";
-import { insertStrategySchema, insertBacktestSchema, insertLogSchema } from "@shared/schema";
+import { insertStrategySchema, insertBacktestSchema, insertLogSchema, upstoxAuthSchema, upstoxAccountLinkSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
