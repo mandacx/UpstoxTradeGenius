@@ -260,32 +260,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/auth/user", (req, res) => {
-    const cookieAuthToken = req.cookies.auth_token;
-    const bearerToken = req.headers.authorization?.replace('Bearer ', '');
-    const authToken = cookieAuthToken || bearerToken;
-    
-    console.log("Auth check - Session ID:", req.session.id, "User ID:", req.session.userId, "Cookie Token:", cookieAuthToken ? "present" : "missing", "Bearer Token:", bearerToken ? "present" : "missing");
-    
-    // Check if user has valid session AND auth token (from either cookie or header)
-    if (!req.session.userId || !authToken || req.session.authToken !== authToken) {
-      console.log("No valid session or auth token found, returning 401");
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-    
-    storage.getUser(req.session.userId)
-      .then(user => {
-        if (!user) {
-          return res.status(404).json({ error: "User not found" });
+  app.get("/api/auth/user", async (req, res) => {
+    try {
+      const cookieAuthToken = req.cookies.auth_token;
+      const bearerToken = req.headers.authorization?.replace('Bearer ', '');
+      const authToken = cookieAuthToken || bearerToken;
+      
+      console.log("Auth check - Session ID:", req.session.id, "User ID:", req.session.userId, "Cookie Token:", cookieAuthToken ? "present" : "missing", "Bearer Token:", bearerToken ? "present" : "missing");
+      
+      // Skip session validation if no auth token provided
+      if (!authToken) {
+        console.log("No auth token provided, returning 401");
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      // Try session-based auth first
+      if (req.session.userId && req.session.authToken === authToken) {
+        const user = await storage.getUser(req.session.userId);
+        if (user) {
+          console.log("Session auth successful for user:", user.username, "role:", user.role);
+          const { password, ...userResponse } = user;
+          return res.json(userResponse);
         }
-        console.log("User found, returning user data with role:", user.role);
-        const { password, ...userResponse } = user;
-        res.json(userResponse);
-      })
-      .catch(error => {
-        console.error("Get user error:", error);
-        res.status(500).json({ error: "Failed to get user" });
-      });
+      }
+      
+      // Try token-based auth as fallback
+      if (authToken) {
+        console.log("Looking for token:", authToken);
+        const allUsers = await storage.getAllUsers();
+        console.log("Found users with tokens:", allUsers.map(u => ({ id: u.id, username: u.username, hasToken: !!u.lastAuthToken, tokenLength: u.lastAuthToken?.length })));
+        const user = allUsers.find(u => u.lastAuthToken === authToken);
+        
+        if (user) {
+          console.log("Token auth successful for user:", user.username, "role:", user.role);
+          const { password, ...userResponse } = user;
+          return res.json(userResponse);
+        }
+        console.log("No user found with matching token");
+      }
+      
+      console.log("No valid authentication found, returning 401");
+      return res.status(401).json({ error: "Not authenticated" });
+    } catch (error) {
+      console.error("Get user error:", error);
+      res.status(500).json({ error: "Failed to get user" });
+    }
   });
   
   // Temporarily disable WebSocket to prevent crashes
