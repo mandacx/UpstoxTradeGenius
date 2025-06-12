@@ -24,6 +24,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   };
+
+  const requireAuthFlexible = async (req: Request, res: Response, next: any) => {
+    try {
+      // Check session-based auth first
+      if (req.session.userId) {
+        return next();
+      }
+
+      // Try token-based auth
+      const cookieAuthToken = req.cookies.auth_token;
+      const bearerToken = req.headers.authorization?.replace('Bearer ', '');
+      const authToken = cookieAuthToken || bearerToken;
+      
+      console.log("Flexible auth - Cookie token:", cookieAuthToken ? "present" : "missing", "Bearer token:", bearerToken ? "present" : "missing");
+
+      if (authToken) {
+        console.log("Looking for user with token:", authToken);
+        const allUsers = await storage.getAllUsers();
+        const user = allUsers.find(u => u.lastAuthToken === authToken);
+        
+        if (user) {
+          console.log("Found user for token:", user.username, "role:", user.role);
+          // Set user in request for downstream handlers
+          (req as any).authUser = user;
+          return next();
+        }
+        console.log("No user found with matching token");
+      }
+
+      return res.status(401).json({ error: "Authentication required" });
+    } catch (error) {
+      console.error("Auth error:", error);
+      res.status(500).json({ error: "Authentication failed" });
+    }
+  };
   
   // Auth routes
   app.post("/api/auth/signup", async (req, res) => {
@@ -1223,10 +1258,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin routes
-  app.get("/api/admin/stats", requireAuth, async (req, res) => {
+  app.get("/api/admin/stats", requireAuthFlexible, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const user = await storage.getUser(userId);
+      const user = (req as any).authUser || await storage.getUser(req.session.userId!);
       
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ error: "Admin access required" });
@@ -1279,10 +1313,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/admin/users", requireAuth, async (req, res) => {
+  app.get("/api/admin/users", requireAuthFlexible, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const user = await storage.getUser(userId);
+      const user = (req as any).authUser || await storage.getUser(req.session.userId!);
       
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ error: "Admin access required" });
@@ -1310,10 +1343,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/admin/users/:id", requireAuth, async (req, res) => {
+  app.patch("/api/admin/users/:id", requireAuthFlexible, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const user = await storage.getUser(userId);
+      const user = (req as any).authUser || await storage.getUser(req.session.userId!);
       
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ error: "Admin access required" });
@@ -1330,10 +1362,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/admin/revenue", requireAuth, async (req, res) => {
+  app.get("/api/admin/revenue", requireAuthFlexible, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const user = await storage.getUser(userId);
+      const user = (req as any).authUser || await storage.getUser(req.session.userId!);
       
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ error: "Admin access required" });
