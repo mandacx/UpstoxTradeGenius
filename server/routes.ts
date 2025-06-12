@@ -84,8 +84,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Invalid email or password" });
       }
       
-      // Create simple session-based auth
+      // Create session and auth token
+      const authToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
       req.session.userId = user.id;
+      req.session.authToken = authToken;
       
       req.session.save((saveErr) => {
         if (saveErr) {
@@ -95,11 +97,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         console.log("Session created successfully:", req.session.id, "for user:", user.id);
         
-        // Remove password from response and include session info
+        // Set auth token cookie
+        res.cookie('auth_token', authToken, {
+          httpOnly: false,
+          secure: false,
+          maxAge: 24 * 60 * 60 * 1000,
+          sameSite: 'lax',
+          path: '/'
+        });
+        
+        // Remove password from response
         const { password: _, ...userResponse } = user;
         res.json({
           ...userResponse,
-          sessionId: req.session.id
+          authToken: authToken
         });
       });
     } catch (error: any) {
@@ -118,11 +129,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/auth/user", (req, res) => {
-    console.log("Auth check - Session ID:", req.session.id, "User ID:", req.session.userId);
+    const authToken = req.cookies.auth_token;
+    console.log("Auth check - Session ID:", req.session.id, "User ID:", req.session.userId, "Auth Token:", authToken ? "present" : "missing");
     
-    // Check if user has valid session
-    if (!req.session.userId) {
-      console.log("No valid session found, returning 401");
+    // Check if user has valid session AND auth token
+    if (!req.session.userId || !authToken || req.session.authToken !== authToken) {
+      console.log("No valid session or auth token found, returning 401");
       return res.status(401).json({ error: "Not authenticated" });
     }
     
