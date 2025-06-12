@@ -253,7 +253,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/market/quote/:symbol", async (req, res) => {
     try {
       const { symbol } = req.params;
-      const quote = await upstoxService.getQuote(symbol);
+      const userId = 1;
+      const accessToken = await getValidUpstoxToken(userId, storage);
+      if (!accessToken) {
+        return res.status(401).json({ error: "Upstox account not linked or token expired" });
+      }
+      const quote = await upstoxService.getQuote(symbol, accessToken);
       res.json(quote);
     } catch (error) {
       console.error("Error fetching quote:", error);
@@ -342,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.redirect("/?upstox=linked");
     } catch (error) {
       console.error("Error in Upstox callback:", error);
-      res.redirect("/?upstox=error&reason=" + encodeURIComponent(error.message));
+      res.redirect("/?upstox=error&reason=" + encodeURIComponent(String((error as Error)?.message || 'Unknown error')));
     }
   });
 
@@ -656,7 +661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const orderData = req.body;
-      const result = await upstoxService.placeOrder({ ...orderData, accessToken });
+      const result = await upstoxService.placeOrder(orderData, accessToken);
       res.json(result);
     } catch (error) {
       console.error("Error placing order:", error);
