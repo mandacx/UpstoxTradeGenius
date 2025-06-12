@@ -196,7 +196,7 @@ export class DatabaseStorage implements IStorage {
 
   // Backtest operations
   async getBacktests(userId: number): Promise<Backtest[]> {
-    return await db.select().from(backtests).where(and(eq(backtests.userId, userId), ne(backtests.status, "deleted"))).orderBy(desc(backtests.createdAt));
+    return await db.select().from(backtests).where(and(eq(backtests.userId, userId), or(eq(backtests.status, "completed"), eq(backtests.status, "running"), eq(backtests.status, "pending"), eq(backtests.status, "error"), eq(backtests.status, "cancelled")))).orderBy(desc(backtests.createdAt));
   }
 
   async getBacktest(id: number): Promise<Backtest | undefined> {

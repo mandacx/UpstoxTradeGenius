@@ -16,8 +16,10 @@ import { PlayIcon, ChartBarIcon, TrendingUpIcon, TrendingDownIcon, StopCircleIco
 
 export default function Backtesting() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedBacktest, setSelectedBacktest] = useState<any>(null);
   const [showTradesModal, setShowTradesModal] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
   const { toast } = useToast();
 
   const { data: backtests = [], isLoading } = useQuery<any[]>({
@@ -77,6 +79,49 @@ export default function Backtesting() {
     },
   });
 
+  const deleteBacktestMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("DELETE", `/api/backtests/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/backtests"] });
+      toast({
+        title: "Backtest Deleted",
+        description: "The backtest has been deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete backtest",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const duplicateBacktestMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const response = await apiRequest("POST", `/api/backtests/${id}/duplicate`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/backtests"] });
+      setIsEditModalOpen(false);
+      toast({
+        title: "Backtest Created",
+        description: "A new backtest has been created with updated parameters.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create new backtest",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateBacktest = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -92,6 +137,39 @@ export default function Backtesting() {
     };
     
     createBacktestMutation.mutate(data);
+  };
+
+  const handleEditBacktest = (backtest: any) => {
+    setSelectedBacktest(backtest);
+    setEditFormData({
+      symbol: backtest.symbol,
+      timeframe: backtest.timeframe,
+      startDate: backtest.startDate?.split('T')[0],
+      endDate: backtest.endDate?.split('T')[0],
+      initialCapital: backtest.initialCapital,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    const updateData = {
+      symbol: formData.get("symbol"),
+      timeframe: formData.get("timeframe"),
+      startDate: formData.get("startDate"),
+      endDate: formData.get("endDate"),
+      initialCapital: Number(formData.get("initialCapital")),
+    };
+
+    duplicateBacktestMutation.mutate({ id: selectedBacktest.id, data: updateData });
+  };
+
+  const handleDeleteBacktest = (id: number) => {
+    if (confirm("Are you sure you want to delete this backtest? This action cannot be undone.")) {
+      deleteBacktestMutation.mutate(id);
+    }
   };
 
   const getStatusBadge = (status: string) => {
