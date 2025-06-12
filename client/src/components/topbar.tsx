@@ -3,10 +3,12 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -17,7 +19,8 @@ import {
 } from "@/components/ui/popover";
 import { BellIcon, UserIcon, LogOut, Settings, User, CheckCircle2, AlertTriangle, Info, RefreshCw } from "lucide-react";
 import { wsManager } from "@/lib/websocket";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
 interface Notification {
@@ -38,6 +41,8 @@ interface UserData {
 
 export default function Topbar() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [marketStatus, setMarketStatus] = useState<"open" | "closed" | "pre-open">("open");
   const [marketTime, setMarketTime] = useState<string>("");
   const [notifications, setNotifications] = useState<Notification[]>([
@@ -156,8 +161,6 @@ export default function Topbar() {
     setLocation("/account");
   };
 
-  const { toast } = useToast();
-
   const refreshDataMutation = useMutation({
     mutationFn: async () => {
       // Invalidate all queries to refresh data
@@ -183,9 +186,29 @@ export default function Topbar() {
     refreshDataMutation.mutate();
   };
 
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("/api/auth/logout", "POST");
+    },
+    onSuccess: () => {
+      localStorage.removeItem("authToken");
+      queryClient.clear();
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
+      setLocation("/login");
+    },
+    onError: () => {
+      // Even if the server request fails, clear local storage
+      localStorage.removeItem("authToken");
+      queryClient.clear();
+      setLocation("/login");
+    },
+  });
+
   const handleLogout = () => {
-    // In a real app, this would clear auth tokens
-    console.log("Logging out...");
+    logoutMutation.mutate();
   };
 
   const getMarketStatusColor = () => {
@@ -321,50 +344,42 @@ export default function Topbar() {
           {/* User Profile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center space-x-3 h-auto p-2 hover:bg-gray-700 transition-colors">
-                <div className="text-right">
-                  <p className="text-sm font-medium">Demo User</p>
-                  <p className="text-xs text-gray-400">
-                    {upstoxStatus?.isLinked 
-                      ? `ID: ${upstoxStatus.upstoxUserId || 'Connected'}`
-                      : 'Account not linked'
-                    }
-                  </p>
-                </div>
-                <div className="w-8 h-8 bg-trading-blue rounded-full flex items-center justify-center relative">
-                  <UserIcon className="w-4 h-4 text-white" />
-                  {upstoxStatus?.isLinked && (
-                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-trading-card"></div>
-                  )}
-                </div>
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.profileImageUrl || undefined} alt="User" />
+                  <AvatarFallback className="bg-blue-600 text-white">
+                    {user?.firstName ? user.firstName.charAt(0).toUpperCase() : 
+                     user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
+                  </AvatarFallback>
+                </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56 bg-trading-card border-trading-border" align="end">
-              <div className="px-2 py-1.5">
-                <p className="text-sm font-medium">Demo User</p>
-                <p className="text-xs text-gray-400">
-                  Balance: ₹{accountData?.totalBalance ? parseFloat(accountData.totalBalance).toLocaleString() : '0'}
-                </p>
-              </div>
-              <DropdownMenuSeparator className="bg-trading-border" />
-              <DropdownMenuItem 
-                onClick={handleAccountClick}
-                className="hover:bg-gray-700 cursor-pointer"
-              >
-                <User className="mr-2 h-4 w-4" />
-                Account Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem className="hover:bg-gray-700 cursor-pointer">
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">
+                    {user?.firstName && user?.lastName 
+                      ? `${user.firstName} ${user.lastName}` 
+                      : user?.username || 'User'}
+                  </p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user?.email}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setLocation("/preferences")}>
                 <Settings className="mr-2 h-4 w-4" />
-                Preferences
+                <span>Preferences</span>
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-trading-border" />
-              <DropdownMenuItem 
-                onClick={handleLogout}
-                className="hover:bg-gray-700 cursor-pointer text-red-400"
-              >
+              <DropdownMenuItem onClick={handleAccountClick}>
+                <User className="mr-2 h-4 w-4" />
+                <span>Account Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
-                Sign out
+                <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
