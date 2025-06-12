@@ -256,7 +256,8 @@ class EnhancedBacktestingEngine {
   private generateRealisticMockData(symbol: string, timeframe: string, startDate: Date, endDate: Date): any[] {
     const data = [];
     const currentDate = new Date(startDate);
-    let currentPrice = symbol.includes('NIFTY') ? 18000 : 100; // Base price
+    const basePrice = symbol.includes('NIFTY') ? 18000 : 100;
+    let currentPrice = basePrice;
 
     const getTimeframeMinutes = (tf: string) => {
       switch (tf) {
@@ -287,12 +288,28 @@ class EnhancedBacktestingEngine {
         }
       }
 
-      const volatility = 0.02; // 2% daily volatility
-      const change = (Math.random() - 0.5) * volatility * 2;
+      // Scale volatility based on timeframe
+      const volatilityScale = minutes < 60 ? 0.003 : 0.01; // Lower volatility for shorter timeframes
+      const maxChange = volatilityScale * Math.sqrt(minutes / 60); // Adjusted for timeframe
+      const change = (Math.random() - 0.5) * maxChange * 2;
+      
       const open = currentPrice;
-      const close = open * (1 + change);
-      const high = Math.max(open, close) * (1 + Math.random() * 0.01);
-      const low = Math.min(open, close) * (1 - Math.random() * 0.01);
+      let close = open * (1 + change);
+      
+      // Mean reversion to prevent unrealistic drift
+      const driftFromBase = (currentPrice - basePrice) / basePrice;
+      if (Math.abs(driftFromBase) > 0.3) { // If price drifted more than 30% from base
+        const reversion = -driftFromBase * 0.1; // 10% reversion towards base
+        close = open * (1 + change + reversion);
+      }
+      
+      // Ensure price stays within reasonable bounds
+      const minPrice = basePrice * 0.5; // 50% of base price
+      const maxPrice = basePrice * 2.0; // 200% of base price
+      close = Math.max(minPrice, Math.min(maxPrice, close));
+      
+      const high = Math.max(open, close) * (1 + Math.random() * 0.005);
+      const low = Math.min(open, close) * (1 - Math.random() * 0.005);
       const volume = Math.floor(Math.random() * 1000000) + 10000;
 
       data.push({
@@ -409,10 +426,22 @@ class EnhancedBacktestingEngine {
           })()
         `);
 
+        // Price validation helper
+        const isValidPrice = (entryPrice: number, exitPrice: number) => {
+          const priceChange = Math.abs((exitPrice - entryPrice) / entryPrice);
+          return priceChange <= 0.5; // Max 50% price change per trade
+        };
+
         // Process trading signals
         if (signal.action === 'BUY' && currentPosition <= 0) {
           // Close short position if any
           if (openTrade && openTrade.side === 'SELL') {
+            // Validate exit price is reasonable
+            if (!isValidPrice(openTrade.entryPrice, currentCandle.close)) {
+              console.warn(`Skipping unrealistic trade: entry ${openTrade.entryPrice}, exit ${currentCandle.close}`);
+              continue;
+            }
+            
             const pnl = (openTrade.entryPrice - currentCandle.close) * openTrade.quantity;
             const pnlPercent = (pnl / (openTrade.entryPrice * openTrade.quantity)) * 100;
             
