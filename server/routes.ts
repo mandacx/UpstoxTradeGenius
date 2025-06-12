@@ -311,13 +311,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user profile to verify account
       const profile = await upstoxService.getUserProfile(tokenData.access_token);
       
-      // Update user with Upstox credentials
+      // Store tokens in account management module
       const expiryTime = new Date(Date.now() + (tokenData.expires_in * 1000));
-      await storage.updateUser(parseInt(userId), {
-        upstoxUserId: profile.data.user_id,
+      await storage.updateAccount(parseInt(userId), {
         upstoxAccessToken: tokenData.access_token,
         upstoxRefreshToken: tokenData.refresh_token,
+        upstoxUserId: profile.data.user_id,
         upstoxTokenExpiry: expiryTime,
+        upstoxTokenType: tokenData.token_type,
+      });
+
+      // Update user status
+      await storage.updateUser(parseInt(userId), {
         isUpstoxLinked: true,
       });
 
@@ -339,12 +344,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const expiryTime = data.expiryTime ? new Date(data.expiryTime) : new Date(Date.now() + (24 * 60 * 60 * 1000)); // 24 hours default
       
-      // Update user with Upstox credentials
-      const updatedUser = await storage.updateUser(userId, {
-        upstoxUserId: data.userId,
+      // Store tokens in account management module
+      await storage.updateAccount(userId, {
         upstoxAccessToken: data.accessToken,
         upstoxRefreshToken: data.refreshToken,
+        upstoxUserId: data.userId,
         upstoxTokenExpiry: expiryTime,
+        upstoxTokenType: "Bearer",
+      });
+
+      // Update user status
+      const updatedUser = await storage.updateUser(userId, {
         isUpstoxLinked: true,
       });
 
@@ -395,21 +405,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/upstox/refresh-token", async (req, res) => {
     try {
       const userId = 1; // In real app, get from session
-      const user = await storage.getUser(userId);
+      const account = await storage.getAccount(userId);
       
-      if (!user?.upstoxRefreshToken) {
+      if (!account?.upstoxRefreshToken) {
         return res.status(400).json({ error: "No refresh token available" });
       }
 
-      // Refresh the access token
-      const tokenData = await upstoxService.refreshAccessToken(user.upstoxRefreshToken);
+      // Refresh the access token using Upstox API
+      const tokenData = await upstoxService.refreshAccessToken(account.upstoxRefreshToken);
       
-      // Update user with new token
+      // Update account with new token data
       const expiryTime = new Date(Date.now() + (tokenData.expires_in * 1000));
-      await storage.updateUser(userId, {
+      await storage.updateAccount(userId, {
         upstoxAccessToken: tokenData.access_token,
-        upstoxRefreshToken: tokenData.refresh_token || user.upstoxRefreshToken,
+        upstoxRefreshToken: tokenData.refresh_token || account.upstoxRefreshToken,
         upstoxTokenExpiry: expiryTime,
+        upstoxTokenType: tokenData.token_type,
       });
 
       res.json({ message: "Token refreshed successfully" });
@@ -443,6 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = 1; // In real app, get from session
       const user = await storage.getUser(userId);
+      const account = await storage.getAccount(userId);
       
       if (!user) {
         return res.status(404).json({ error: "User not found" });
@@ -450,9 +462,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         isLinked: user.isUpstoxLinked || false,
-        upstoxUserId: user.upstoxUserId,
-        tokenExpiry: user.upstoxTokenExpiry,
-        needsRefresh: user.upstoxTokenExpiry ? new Date() > user.upstoxTokenExpiry : false
+        upstoxUserId: account?.upstoxUserId,
+        tokenExpiry: account?.upstoxTokenExpiry,
+        needsRefresh: account?.upstoxTokenExpiry ? new Date() > account.upstoxTokenExpiry : false
       });
     } catch (error) {
       console.error("Error checking account status:", error);
