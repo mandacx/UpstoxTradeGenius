@@ -155,6 +155,7 @@ export const configurations = pgTable("configurations", {
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export const upstoxAuthSchema = z.object({

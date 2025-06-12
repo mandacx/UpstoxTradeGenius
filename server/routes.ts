@@ -7,13 +7,135 @@ import { generateStrategy } from "./openai";
 import { runEnhancedBacktest, cancelBacktest } from "./enhanced-backtesting";
 import { upstoxService, getValidUpstoxToken } from "./upstox";
 import { configService } from "./config-service";
-import { insertStrategySchema, insertBacktestSchema, insertLogSchema, upstoxAuthSchema, upstoxAccountLinkSchema } from "@shared/schema";
+import { insertStrategySchema, insertBacktestSchema, insertLogSchema, upstoxAuthSchema, upstoxAccountLinkSchema, insertUserSchema } from "@shared/schema";
+import bcrypt from "bcrypt";
+import session from "express-session";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
   // Initialize configuration service
   await configService.initialize();
+  
+  // Session configuration
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'trading-app-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // Set to true in production with HTTPS
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  }));
+  
+  // Authentication middleware
+  const requireAuth = (req: any, res: any, next: any) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    next();
+  };
+  
+  // Auth routes
+  app.post("/api/auth/signup", async (req, res) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(userData.email);
+      if (existingUser) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+      
+      const existingUsername = await storage.getUserByUsername(userData.username);
+      if (existingUsername) {
+        return res.status(400).json({ error: "Username already taken" });
+      }
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      
+      // Create user with subscription details
+      const user = await storage.createUser({
+        ...userData,
+        password: hashedPassword,
+        subscriptionPlan: userData.subscriptionPlan || "demo",
+        subscriptionStatus: "active",
+        trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days trial
+      });
+      
+      // Create user session
+      (req as any).session.userId = user.id;
+      
+      // Remove password from response
+      const { password, ...userResponse } = user;
+      res.status(201).json(userResponse);
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      res.status(400).json({ error: error.message || "Failed to create account" });
+    }
+  });
+  
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password required" });
+      }
+      
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+      
+      // Verify password
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+      
+      // Create user session
+      (req as any).session.userId = user.id;
+      
+      // Remove password from response
+      const { password: _, ...userResponse } = user;
+      res.json(userResponse);
+    } catch (error: any) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Failed to log in" });
+    }
+  });
+  
+  app.post("/api/auth/logout", (req, res) => {
+    (req as any).session.destroy((err: any) => {
+      if (err) {
+        return res.status(500).json({ error: "Failed to log out" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+  
+  app.get("/api/auth/user", (req, res) => {
+    if (!(req as any).session.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    storage.getUser((req as any).session.userId)
+      .then(user => {
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+        const { password, ...userResponse } = user;
+        res.json(userResponse);
+      })
+      .catch(error => {
+        console.error("Get user error:", error);
+        res.status(500).json({ error: "Failed to get user" });
+      });
+  });
   
   // Temporarily disable WebSocket to prevent crashes
   // const wss = new WebSocketServer({ server: httpServer });
