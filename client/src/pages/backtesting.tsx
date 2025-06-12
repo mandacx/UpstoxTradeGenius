@@ -393,7 +393,7 @@ export default function Backtesting() {
                         </div>
                         <div className="text-center">
                           <div className="text-2xl font-bold">
-                            {(backtest.sharpeRatio || 0).toFixed(2)}
+                            {Number(backtest.sharpeRatio || 0).toFixed(2)}
                           </div>
                           <div className="text-xs text-gray-400">Sharpe Ratio</div>
                         </div>
