@@ -67,16 +67,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/auth/login", async (req, res) => {
     try {
-      const { email, password } = req.body;
+      const { emailOrUsername, password } = req.body;
       
-      if (!email || !password) {
-        return res.status(400).json({ error: "Email and password required" });
+      if (!emailOrUsername || !password) {
+        return res.status(400).json({ error: "Email/username and password required" });
       }
       
-      // Find user by email
-      const user = await storage.getUserByEmail(email);
+      // Find user by email first, then by username
+      let user = await storage.getUserByEmail(emailOrUsername);
       if (!user) {
-        return res.status(401).json({ error: "Invalid email or password" });
+        user = await storage.getUserByUsername(emailOrUsername);
+      }
+      
+      if (!user) {
+        return res.status(401).json({ error: "Invalid email/username or password" });
       }
       
       // Verify password
