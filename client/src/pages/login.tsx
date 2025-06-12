@@ -14,7 +14,7 @@ import { Link, useLocation } from "wouter";
 import { TrendingUpIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
+  emailOrUsername: z.string().min(1, "Email or username is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
@@ -92,18 +92,18 @@ export default function Login() {
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-white">Email Address</Label>
+                <Label htmlFor="emailOrUsername" className="text-white">Email or Username</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
+                  id="emailOrUsername"
+                  type="text"
+                  placeholder="Enter your email or username"
                   className="bg-white/5 border-white/20 text-white placeholder:text-gray-400"
-                  {...register("email")}
+                  {...register("emailOrUsername")}
                 />
-                {errors.email && (
+                {errors.emailOrUsername && (
                   <Alert className="bg-red-500/20 border-red-500/30">
                     <AlertDescription className="text-red-300">
-                      {errors.email.message}
+                      {errors.emailOrUsername.message}
                     </AlertDescription>
                   </Alert>
                 )}

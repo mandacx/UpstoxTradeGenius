@@ -141,7 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/auth/profile", requireAuth, async (req, res) => {
     try {
       const { firstName, lastName, username, email } = req.body;
-      const userId = req.session.userId;
+      const userId = req.session.userId!;
       
       // Check if username or email already exists (for other users)
       if (username) {
@@ -176,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/auth/password", requireAuth, async (req, res) => {
     try {
       const { currentPassword, newPassword } = req.body;
-      const userId = req.session.userId;
+      const userId = req.session.userId!;
       
       if (!currentPassword || !newPassword) {
         return res.status(400).json({ error: "Current and new password required" });
@@ -206,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/avatar", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = req.session.userId!;
       
       // For demo purposes, generate a placeholder avatar URL
       // In production, you would handle file upload and storage
@@ -223,7 +223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/logout", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = req.session.userId!;
       
       // Clear the auth token from user record
       await storage.updateUser(userId, { lastAuthToken: null });
