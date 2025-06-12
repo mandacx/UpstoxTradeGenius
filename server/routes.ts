@@ -137,6 +137,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Profile management endpoints
+  app.patch("/api/auth/profile", requireAuth, async (req, res) => {
+    try {
+      const { firstName, lastName, username, email } = req.body;
+      const userId = req.session.userId;
+      
+      // Check if username or email already exists (for other users)
+      if (username) {
+        const existingUser = await storage.getUserByUsername(username);
+        if (existingUser && existingUser.id !== userId) {
+          return res.status(400).json({ error: "Username already taken" });
+        }
+      }
+      
+      if (email) {
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser && existingUser.id !== userId) {
+          return res.status(400).json({ error: "Email already in use" });
+        }
+      }
+      
+      const updatedUser = await storage.updateUser(userId, {
+        firstName,
+        lastName,
+        username,
+        email
+      });
+      
+      const { password, ...userResponse } = updatedUser;
+      res.json(userResponse);
+    } catch (error: any) {
+      console.error("Profile update error:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+  app.patch("/api/auth/password", requireAuth, async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.session.userId;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Current and new password required" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Verify current password
+      const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(400).json({ error: "Current password is incorrect" });
+      }
+      
+      // Hash new password
+      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(userId, { password: hashedNewPassword });
+      
+      res.json({ message: "Password updated successfully" });
+    } catch (error: any) {
+      console.error("Password update error:", error);
+      res.status(500).json({ error: "Failed to update password" });
+    }
+  });
+
+  app.post("/api/auth/avatar", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      // For demo purposes, generate a placeholder avatar URL
+      // In production, you would handle file upload and storage
+      const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`;
+      
+      await storage.updateUser(userId, { profileImageUrl: avatarUrl });
+      
+      res.json({ profileImageUrl: avatarUrl });
+    } catch (error: any) {
+      console.error("Avatar upload error:", error);
+      res.status(500).json({ error: "Failed to upload avatar" });
+    }
+  });
+
+  app.post("/api/auth/logout", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      // Clear the auth token from user record
+      await storage.updateUser(userId, { lastAuthToken: null });
+      
+      req.session.destroy((err: any) => {
+        if (err) {
+          console.error("Session destroy error:", err);
+          return res.status(500).json({ error: "Failed to log out" });
+        }
+        res.json({ message: "Logged out successfully" });
+      });
+    } catch (error: any) {
+      console.error("Logout error:", error);
+      res.status(500).json({ error: "Failed to log out" });
+    }
+  });
+
   app.get("/api/auth/user", (req, res) => {
     const cookieAuthToken = req.cookies.auth_token;
     const bearerToken = req.headers.authorization?.replace('Bearer ', '');

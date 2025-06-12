@@ -17,6 +17,7 @@ import Backtesting from "@/pages/backtesting";
 import Modules from "@/pages/modules";
 import Logs from "@/pages/logs";
 import Account from "@/pages/account";
+import Preferences from "@/pages/preferences";
 import Sidebar from "@/components/sidebar";
 import Topbar from "@/components/topbar";
 
@@ -37,6 +38,7 @@ function AuthenticatedApp() {
             <Route path="/modules" component={Modules} />
             <Route path="/logs" component={Logs} />
             <Route path="/account" component={Account} />
+            <Route path="/preferences" component={Preferences} />
             <Route component={NotFound} />
           </Switch>
         </main>
