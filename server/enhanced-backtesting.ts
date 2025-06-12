@@ -34,6 +34,50 @@ interface BacktestResult {
 class EnhancedBacktestingEngine {
   private cancelledBacktests = new Set<number>();
 
+  private calculateRSI(prices: number[], period: number = 14): number[] {
+    if (prices.length < period + 1) {
+      return [];
+    }
+    
+    const gains: number[] = [];
+    const losses: number[] = [];
+    
+    // Calculate initial gains and losses
+    for (let i = 1; i < prices.length; i++) {
+      const change = prices[i] - prices[i - 1];
+      gains.push(change > 0 ? change : 0);
+      losses.push(change < 0 ? Math.abs(change) : 0);
+    }
+    
+    const rsiValues: number[] = [];
+    
+    // Calculate first RSI value using simple moving average
+    let avgGain = gains.slice(0, period).reduce((sum, gain) => sum + gain, 0) / period;
+    let avgLoss = losses.slice(0, period).reduce((sum, loss) => sum + loss, 0) / period;
+    
+    if (avgLoss === 0) {
+      rsiValues.push(100);
+    } else {
+      const rs = avgGain / avgLoss;
+      rsiValues.push(100 - (100 / (1 + rs)));
+    }
+    
+    // Calculate subsequent RSI values using exponential moving average
+    for (let i = period; i < gains.length; i++) {
+      avgGain = (avgGain * (period - 1) + gains[i]) / period;
+      avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
+      
+      if (avgLoss === 0) {
+        rsiValues.push(100);
+      } else {
+        const rs = avgGain / avgLoss;
+        rsiValues.push(100 - (100 / (1 + rs)));
+      }
+    }
+    
+    return rsiValues;
+  }
+
   async runBacktest(backtestId: number): Promise<void> {
     try {
       console.log(`Starting enhanced backtest ${backtestId}`);
@@ -299,23 +343,66 @@ class EnhancedBacktestingEngine {
       const previousCandles = historicalData.slice(Math.max(0, i - 20), i);
 
       try {
+        // Calculate RSI for the current data window
+        const prices = previousCandles.map(candle => candle.close);
+        const rsiValues = this.calculateRSI(prices, 14);
+        const currentRSI = rsiValues[rsiValues.length - 1];
+
         const vm = new VM({
           timeout: 1000,
           sandbox: {
-            data: previousCandles,
+            data: { [symbol]: previousCandles },
             currentPrice: currentCandle.close,
             position: currentPosition,
-            console: { log: () => {} } // Silent console
+            portfolio: {
+              cash: currentCapital,
+              positions: { [symbol]: currentPosition }
+            },
+            parameters: {
+              rsiPeriod: 14,
+              maxPositionSize: 0.1
+            },
+            rsi: (prices: number[], period: number) => this.calculateRSI(prices, period),
+            buy: (symbol: string, quantity: number, price: number, timestamp: string) => {
+              return { action: 'BUY', quantity, price, timestamp, reason: `RSI Buy Signal (RSI: ${currentRSI?.toFixed(2)})` };
+            },
+            sell: (symbol: string, quantity: number, price: number, timestamp: string) => {
+              return { action: 'SELL', quantity, price, timestamp, reason: `RSI Sell Signal (RSI: ${currentRSI?.toFixed(2)})` };
+            },
+            console: { log: () => {} }
           }
         });
 
         const signal = vm.run(`
-          ${strategyCode}
-          
-          // Execute strategy and return signal
+          // Simplified RSI strategy execution
           (function() {
             try {
-              return executeStrategy(data, currentPrice, position);
+              const prices = data['${symbol}'].map(point => point.close);
+              const rsiValues = rsi(prices, 14);
+              const currentRsi = rsiValues[rsiValues.length - 1];
+              
+              if (!currentRsi || isNaN(currentRsi)) {
+                return { action: 'HOLD', reason: 'Invalid RSI calculation' };
+              }
+              
+              const currentPosition = portfolio.positions['${symbol}'] || 0;
+              const cash = portfolio.cash;
+              const currentPrice = prices[prices.length - 1];
+              
+              // Buy signal: RSI between 30-50 and no position
+              if (currentRsi > 30 && currentRsi <= 50 && currentPosition === 0) {
+                const quantity = Math.floor((cash * 0.1) / currentPrice);
+                if (quantity > 0) {
+                  return buy('${symbol}', quantity, currentPrice, new Date().toISOString());
+                }
+              }
+              
+              // Sell signal: RSI >= 70 and has position
+              if (currentRsi >= 70 && currentPosition > 0) {
+                return sell('${symbol}', currentPosition, currentPrice, new Date().toISOString());
+              }
+              
+              return { action: 'HOLD', reason: \`RSI: \${currentRsi.toFixed(2)} - No signal\` };
             } catch (e) {
               return { action: 'HOLD', reason: 'Strategy error: ' + e.message };
             }
