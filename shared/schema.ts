@@ -9,6 +9,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   firstName: text("first_name"),
   lastName: text("last_name"),
+  profileImageUrl: text("profile_image_url"),
   upstoxUserId: text("upstox_user_id"),
   upstoxAccessToken: text("upstox_access_token"),
   upstoxRefreshToken: text("upstox_refresh_token"),
