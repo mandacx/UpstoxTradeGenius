@@ -124,31 +124,46 @@ export default function Account() {
       const res = await apiRequest("GET", "/api/upstox/auth-url");
       const response: { authUrl: string } = await res.json();
       
-      window.open(response.authUrl, "_blank");
+      // Open popup and listen for messages
+      const popup = window.open(
+        response.authUrl, 
+        "upstox-auth",
+        "width=500,height=600,scrollbars=yes,resizable=yes"
+      );
       
-      const pollInterval = setInterval(async () => {
-        try {
-          const statusRes = await apiRequest("GET", "/api/upstox/account-status");
-          const status: UpstoxStatus = await statusRes.json();
-          
-          if (status.isLinked) {
-            clearInterval(pollInterval);
-            setIsLinking(false);
-            queryClient.invalidateQueries({ queryKey: ["/api/upstox/account-status"] });
-            toast({
-              title: "Account Linked",
-              description: "Your Upstox account has been linked successfully.",
-            });
-          }
-        } catch (pollError) {
-          console.error("Error polling status:", pollError);
+      // Listen for messages from the popup
+      const handleMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        
+        if (event.data.type === 'UPSTOX_AUTH_SUCCESS') {
+          setIsLinking(false);
+          queryClient.invalidateQueries({ queryKey: ["/api/upstox/account-status"] });
+          toast({
+            title: "Account Linked",
+            description: "Your Upstox account has been linked successfully.",
+          });
+          window.removeEventListener('message', handleMessage);
+        } else if (event.data.type === 'UPSTOX_AUTH_ERROR') {
+          setIsLinking(false);
+          toast({
+            title: "Connection Failed",
+            description: event.data.error || "Failed to link Upstox account.",
+            variant: "destructive",
+          });
+          window.removeEventListener('message', handleMessage);
         }
-      }, 3000);
+      };
       
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        setIsLinking(false);
-      }, 300000);
+      window.addEventListener('message', handleMessage);
+      
+      // Fallback: Check if popup was closed manually
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed);
+          setIsLinking(false);
+          window.removeEventListener('message', handleMessage);
+        }
+      }, 1000);
       
     } catch (error) {
       setIsLinking(false);

@@ -347,11 +347,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log("Upstox account linked successfully for user:", userId);
-      // Redirect to account page with success message
-      res.redirect("/account?upstox=linked");
+      // Return a success page that can communicate with the parent window
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Upstox Authentication Success</title>
+        </head>
+        <body>
+          <script>
+            if (window.opener) {
+              window.opener.postMessage({ type: 'UPSTOX_AUTH_SUCCESS' }, '*');
+              window.close();
+            } else {
+              window.location.href = '/account?upstox=linked';
+            }
+          </script>
+          <div style="text-align: center; padding: 50px;">
+            <h2>Authentication Successful!</h2>
+            <p>Your Upstox account has been linked successfully.</p>
+            <p>This window will close automatically...</p>
+          </div>
+        </body>
+        </html>
+      `);
     } catch (error) {
       console.error("Error in Upstox callback:", error);
-      res.redirect("/account?upstox=error&reason=" + encodeURIComponent(String((error as Error)?.message || 'Unknown error')));
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Upstox Authentication Error</title>
+        </head>
+        <body>
+          <script>
+            if (window.opener) {
+              window.opener.postMessage({ 
+                type: 'UPSTOX_AUTH_ERROR', 
+                error: ${JSON.stringify(String((error as Error)?.message || 'Unknown error'))}
+              }, '*');
+              window.close();
+            } else {
+              window.location.href = '/account?upstox=error&reason=' + encodeURIComponent(${JSON.stringify(String((error as Error)?.message || 'Unknown error'))});
+            }
+          </script>
+          <div style="text-align: center; padding: 50px;">
+            <h2>Authentication Failed</h2>
+            <p>There was an error linking your Upstox account.</p>
+            <p>Error: ${String((error as Error)?.message || 'Unknown error')}</p>
+            <p>This window will close automatically...</p>
+          </div>
+        </body>
+        </html>
+      `);
     }
   });
 
