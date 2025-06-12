@@ -103,6 +103,12 @@ export const accounts = pgTable("accounts", {
   usedMargin: decimal("used_margin", { precision: 15, scale: 2 }),
   todayPnL: decimal("today_pnl", { precision: 15, scale: 2 }),
   realizedPnL: decimal("realized_pnl", { precision: 15, scale: 2 }),
+  // Upstox authentication fields
+  upstoxAccessToken: text("upstox_access_token"),
+  upstoxRefreshToken: text("upstox_refresh_token"),
+  upstoxUserId: text("upstox_user_id"),
+  upstoxTokenExpiry: timestamp("upstox_token_expiry"),
+  upstoxTokenType: text("upstox_token_type"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
