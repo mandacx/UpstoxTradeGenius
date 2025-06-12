@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,8 +15,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { BellIcon, UserIcon, LogOut, Settings, User, CheckCircle2, AlertTriangle, Info } from "lucide-react";
+import { BellIcon, UserIcon, LogOut, Settings, User, CheckCircle2, AlertTriangle, Info, RefreshCw } from "lucide-react";
 import { wsManager } from "@/lib/websocket";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface Notification {
   id: string;
@@ -154,6 +156,33 @@ export default function Topbar() {
     setLocation("/account");
   };
 
+  const { toast } = useToast();
+
+  const refreshDataMutation = useMutation({
+    mutationFn: async () => {
+      // Invalidate all queries to refresh data
+      await queryClient.invalidateQueries();
+      return { success: true };
+    },
+    onSuccess: () => {
+      toast({
+        title: "Data Refreshed",
+        description: "All dashboard data has been refreshed successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh data. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRefresh = () => {
+    refreshDataMutation.mutate();
+  };
+
   const handleLogout = () => {
     // In a real app, this would clear auth tokens
     console.log("Logging out...");
@@ -206,6 +235,17 @@ export default function Topbar() {
         </div>
         
         <div className="flex items-center space-x-4">
+          {/* Refresh Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshDataMutation.isPending}
+            className="p-2 rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            <RefreshCw className={`w-5 h-5 ${refreshDataMutation.isPending ? 'animate-spin' : ''}`} />
+          </Button>
+
           {/* Notifications */}
           <Popover>
             <PopoverTrigger asChild>

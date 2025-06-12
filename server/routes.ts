@@ -27,7 +27,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!account) {
         return res.status(404).json({ error: "Account not found" });
       }
-      res.json(account);
+
+      // Try to get real balance data from Upstox if linked
+      const accessToken = await getValidUpstoxToken(userId, storage);
+      if (accessToken) {
+        try {
+          const fundsData = await upstoxService.getFunds(accessToken);
+          // Map Upstox data to our account format
+          const upstoxAccount = {
+            ...account,
+            totalBalance: fundsData.equity?.available_margin?.toString() || account.totalBalance,
+            availableMargin: fundsData.equity?.available_margin?.toString() || account.availableMargin,
+            usedMargin: fundsData.equity?.used_margin?.toString() || account.usedMargin,
+          };
+          res.json(upstoxAccount);
+        } catch (upstoxError) {
+          console.warn("Failed to fetch Upstox funds data, using stored account data:", upstoxError);
+          res.json(account);
+        }
+      } else {
+        res.json(account);
+      }
     } catch (error) {
       console.error("Error fetching account:", error);
       res.status(500).json({ error: "Failed to fetch account data" });
@@ -38,8 +58,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/positions", async (req, res) => {
     try {
       const userId = 1; // In real app, get from session
-      const positions = await storage.getPositions(userId);
-      res.json(positions);
+      
+      // Try to get real positions from Upstox if linked
+      const accessToken = await getValidUpstoxToken(userId, storage);
+      if (accessToken) {
+        try {
+          const upstoxPositions = await upstoxService.getPositions(accessToken);
+          res.json(upstoxPositions || []);
+        } catch (upstoxError) {
+          console.warn("Failed to fetch Upstox positions, using stored data:", upstoxError);
+          const positions = await storage.getPositions(userId);
+          res.json(positions);
+        }
+      } else {
+        const positions = await storage.getPositions(userId);
+        res.json(positions);
+      }
     } catch (error) {
       console.error("Error fetching positions:", error);
       res.status(500).json({ error: "Failed to fetch positions" });
@@ -49,8 +83,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/positions/open", async (req, res) => {
     try {
       const userId = 1; // In real app, get from session
-      const positions = await storage.getOpenPositions(userId);
-      res.json(positions);
+      
+      // Try to get real positions from Upstox if linked
+      const accessToken = await getValidUpstoxToken(userId, storage);
+      if (accessToken) {
+        try {
+          const upstoxPositions = await upstoxService.getPositions(accessToken);
+          // Filter for open positions (assuming Upstox returns all positions)
+          const openPositions = upstoxPositions?.filter((pos: any) => pos.quantity !== 0) || [];
+          res.json(openPositions);
+        } catch (upstoxError) {
+          console.warn("Failed to fetch Upstox open positions, using stored data:", upstoxError);
+          const positions = await storage.getOpenPositions(userId);
+          res.json(positions);
+        }
+      } else {
+        const positions = await storage.getOpenPositions(userId);
+        res.json(positions);
+      }
     } catch (error) {
       console.error("Error fetching open positions:", error);
       res.status(500).json({ error: "Failed to fetch open positions" });

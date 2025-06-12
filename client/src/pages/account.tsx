@@ -141,10 +141,11 @@ export default function Account() {
         
         if (event.data.type === 'UPSTOX_AUTH_SUCCESS') {
           setIsLinking(false);
-          queryClient.invalidateQueries({ queryKey: ["/api/upstox/account-status"] });
+          // Refresh all data after successful account linking
+          queryClient.invalidateQueries();
           toast({
             title: "Account Linked",
-            description: "Your Upstox account has been linked successfully.",
+            description: "Your Upstox account has been linked successfully. All data is now refreshing.",
           });
           window.removeEventListener('message', handleMessage);
         } else if (event.data.type === 'UPSTOX_AUTH_ERROR') {
