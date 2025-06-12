@@ -1,9 +1,10 @@
 import { 
-  users, accounts, positions, trades, strategies, backtests, modules, logs,
+  users, accounts, positions, trades, strategies, backtests, modules, logs, configurations,
   type User, type InsertUser, type Account, type InsertAccount,
   type Position, type InsertPosition, type Trade, type InsertTrade,
   type Strategy, type InsertStrategy, type Backtest, type InsertBacktest,
-  type Module, type InsertModule, type Log, type InsertLog
+  type Module, type InsertModule, type Log, type InsertLog,
+  type Configuration, type InsertConfiguration
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, like, or } from "drizzle-orm";
@@ -52,6 +53,11 @@ export interface IStorage {
   // Log operations
   getLogs(filters: { level?: string; module?: string }, limit: number, offset: number): Promise<Log[]>;
   createLog(log: InsertLog): Promise<Log>;
+
+  // Configuration operations
+  getConfiguration(key: string): Promise<Configuration | undefined>;
+  setConfiguration(config: InsertConfiguration): Promise<Configuration>;
+  getAllConfigurations(): Promise<Configuration[]>;
 }
 
 export class DatabaseStorage implements IStorage {

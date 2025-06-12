@@ -112,6 +112,15 @@ export const accounts = pgTable("accounts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const configurations = pgTable("configurations", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(),
+  description: text("description"),
+  isSecret: boolean("is_secret").default(false),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -172,6 +181,11 @@ export const insertAccountSchema = createInsertSchema(accounts).omit({
   updatedAt: true,
 });
 
+export const insertConfigurationSchema = createInsertSchema(configurations).omit({
+  id: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -189,3 +203,5 @@ export type Log = typeof logs.$inferSelect;
 export type InsertLog = z.infer<typeof insertLogSchema>;
 export type Account = typeof accounts.$inferSelect;
 export type InsertAccount = z.infer<typeof insertAccountSchema>;
+export type Configuration = typeof configurations.$inferSelect;
+export type InsertConfiguration = z.infer<typeof insertConfigurationSchema>;
