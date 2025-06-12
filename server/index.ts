@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import MemoryStore from "memorystore";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -8,6 +9,7 @@ import { setupVite, serveStatic, log } from "./vite";
 declare module 'express-session' {
   interface SessionData {
     userId?: number;
+    authToken?: string;
   }
 }
 
@@ -16,6 +18,7 @@ const MemStore = MemoryStore(session);
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 // Session configuration with memory store
 app.use(session({
