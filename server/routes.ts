@@ -1217,7 +1217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allUsers = await storage.getAllUsers();
       const totalUsers = allUsers.length;
       const activeUsers = allUsers.filter(u => u.lastActive && 
-        new Date(u.lastActive) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        new Date(u.lastActive.toString()) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
       ).length;
 
       // Calculate subscription stats
@@ -1235,7 +1235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const currentMonth = new Date().getMonth();
       const recentSignups = allUsers.filter(u => 
-        new Date(u.createdAt).getMonth() === currentMonth
+        u.createdAt && new Date(u.createdAt.toString()).getMonth() === currentMonth
       ).length;
 
       const monthlyRevenue = recentSignups * 999; // Simplified calculation

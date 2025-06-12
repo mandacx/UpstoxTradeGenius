@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import { 
   TrendingUpIcon, 
   BriefcaseIcon, 
@@ -9,7 +10,8 @@ import {
   SettingsIcon, 
   ScrollTextIcon,
   ActivityIcon,
-  UserIcon
+  UserIcon,
+  ShieldIcon
 } from "lucide-react";
 
 const navigation = [
@@ -25,6 +27,13 @@ const navigation = [
 
 export default function Sidebar() {
   const [location] = useLocation();
+  
+  const { data: user } = useQuery({
+    queryKey: ["/api/auth/user"],
+    retry: false,
+  });
+
+  const isAdmin = user?.role === 'admin';
 
   return (
     <aside className="w-64 bg-trading-card border-r border-trading-border flex-shrink-0">
@@ -58,6 +67,22 @@ export default function Sidebar() {
             </Link>
           );
         })}
+        
+        {/* Admin section */}
+        {isAdmin && (
+          <>
+            <div className="border-t border-trading-border my-4"></div>
+            <Link href="/admin" className={cn(
+              "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
+              location === "/admin"
+                ? "bg-trading-blue/10 text-trading-blue" 
+                : "hover:bg-gray-700 text-gray-300 hover:text-white"
+            )}>
+              <ShieldIcon className="w-5 h-5" />
+              <span>Admin Dashboard</span>
+            </Link>
+          </>
+        )}
       </nav>
 
       {/* Connection Status */}

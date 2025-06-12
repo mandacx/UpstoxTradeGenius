@@ -18,6 +18,7 @@ import Modules from "@/pages/modules";
 import Logs from "@/pages/logs";
 import Account from "@/pages/account";
 import Preferences from "@/pages/preferences";
+import Admin from "@/pages/admin";
 import Sidebar from "@/components/sidebar";
 import Topbar from "@/components/topbar";
 
@@ -39,6 +40,7 @@ function AuthenticatedApp() {
             <Route path="/logs" component={Logs} />
             <Route path="/account" component={Account} />
             <Route path="/preferences" component={Preferences} />
+            <Route path="/admin" component={Admin} />
             <Route component={NotFound} />
           </Switch>
         </main>
