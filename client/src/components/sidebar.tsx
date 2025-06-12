@@ -29,7 +29,29 @@ export default function Sidebar() {
   const [location] = useLocation();
   
   const { data: user } = useQuery({
-    queryKey: ["/api/auth/user"],
+    queryKey: ["/api/auth/validate"],
+    queryFn: async () => {
+      const authToken = localStorage.getItem('authToken');
+      
+      if (!authToken) {
+        return null;
+      }
+      
+      try {
+        const response = await fetch("/api/auth/user", {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          return null;
+        }
+        return data;
+      } catch (err) {
+        return null;
+      }
+    },
     retry: false,
   });
 

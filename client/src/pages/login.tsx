@@ -177,6 +177,23 @@ export default function Login() {
                   Use these credentials to explore the demo features
                 </p>
               </div>
+              
+              <div className="text-center mt-4">
+                <h3 className="text-white font-medium mb-3">Admin Access</h3>
+                <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4 text-left">
+                  <div className="text-sm space-y-1">
+                    <div className="text-gray-300">
+                      <span className="text-red-300">Email:</span> admin@tradingpro.ai
+                    </div>
+                    <div className="text-gray-300">
+                      <span className="text-red-300">Password:</span> admin123!
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Admin credentials to access admin dashboard
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
