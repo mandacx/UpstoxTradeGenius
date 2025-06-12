@@ -525,19 +525,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const account = await storage.getAccount(userId);
       
       if (!account?.upstoxRefreshToken) {
-        return res.status(400).json({ error: "No refresh token available" });
+        return res.status(400).json({ 
+          error: "Upstox doesn't provide refresh tokens. Please re-authenticate to get a new access token." 
+        });
       }
 
       // Refresh the access token using Upstox API
       const tokenData = await upstoxService.refreshAccessToken(account.upstoxRefreshToken);
       
       // Update account with new token data
-      const expiryTime = new Date(Date.now() + (tokenData.expires_in * 1000));
+      const expiryTime = tokenData.expires_in 
+        ? new Date(Date.now() + (tokenData.expires_in * 1000))
+        : new Date(Date.now() + (24 * 60 * 60 * 1000));
       await storage.updateAccount(userId, {
         upstoxAccessToken: tokenData.access_token,
         upstoxRefreshToken: tokenData.refresh_token || account.upstoxRefreshToken,
         upstoxTokenExpiry: expiryTime,
-        upstoxTokenType: tokenData.token_type,
+        upstoxTokenType: tokenData.token_type || 'Bearer',
       });
 
       res.json({ message: "Token refreshed successfully" });
@@ -547,7 +551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/upstox/unlink-account", async (req, res) => {
+  app.post("/api/upstox/unlink", async (req, res) => {
     try {
       const userId = 1; // In real app, get from session
       

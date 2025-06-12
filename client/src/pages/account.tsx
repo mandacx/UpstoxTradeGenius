@@ -52,6 +52,10 @@ export default function Account() {
   const refreshTokenMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/upstox/refresh-token", {});
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to refresh token');
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -61,10 +65,10 @@ export default function Account() {
         description: "Your Upstox access token has been refreshed successfully.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
-        title: "Refresh Failed",
-        description: "Failed to refresh Upstox token. Please re-link your account.",
+        title: "Refresh Not Available",
+        description: error.message || "Upstox doesn't support token refresh. Please re-authenticate to get a new token.",
         variant: "destructive",
       });
     },
