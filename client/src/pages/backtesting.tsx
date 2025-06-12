@@ -458,6 +458,22 @@ export default function Backtesting() {
                           <EyeIcon className="w-4 h-4 mr-1" />
                           View Trades
                         </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditBacktest(backtest)}
+                          className="border-trading-border"
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteBacktest(backtest.id)}
+                          className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white"
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
                     
@@ -571,6 +587,108 @@ export default function Backtesting() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Backtest Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="bg-trading-dark border-trading-border max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Backtest Parameters</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveEdit} className="space-y-4">
+            <div>
+              <Label htmlFor="edit-symbol">Stock Symbol</Label>
+              <Select name="symbol" defaultValue={editFormData.symbol}>
+                <SelectTrigger className="bg-trading-card border-trading-border">
+                  <SelectValue placeholder="Select symbol" />
+                </SelectTrigger>
+                <SelectContent className="bg-trading-card border-trading-border">
+                  <SelectItem value="NIFTY">NIFTY 50</SelectItem>
+                  <SelectItem value="BANKNIFTY">BANK NIFTY</SelectItem>
+                  <SelectItem value="RELIANCE">RELIANCE</SelectItem>
+                  <SelectItem value="TCS">TCS</SelectItem>
+                  <SelectItem value="INFY">INFOSYS</SelectItem>
+                  <SelectItem value="HDFC">HDFC</SelectItem>
+                  <SelectItem value="ICICIBANK">ICICI BANK</SelectItem>
+                  <SelectItem value="SBIN">SBI</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="edit-timeframe">Timeframe</Label>
+              <Select name="timeframe" defaultValue={editFormData.timeframe}>
+                <SelectTrigger className="bg-trading-card border-trading-border">
+                  <SelectValue placeholder="Select timeframe" />
+                </SelectTrigger>
+                <SelectContent className="bg-trading-card border-trading-border">
+                  <SelectItem value="1minute">1 Minute</SelectItem>
+                  <SelectItem value="5minute">5 Minutes</SelectItem>
+                  <SelectItem value="15minute">15 Minutes</SelectItem>
+                  <SelectItem value="30minute">30 Minutes</SelectItem>
+                  <SelectItem value="1hour">1 Hour</SelectItem>
+                  <SelectItem value="1day">1 Day</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="edit-startDate">Start Date</Label>
+              <Input
+                id="edit-startDate"
+                name="startDate"
+                type="date"
+                defaultValue={editFormData.startDate}
+                className="bg-trading-card border-trading-border"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-endDate">End Date</Label>
+              <Input
+                id="edit-endDate"
+                name="endDate"
+                type="date"
+                defaultValue={editFormData.endDate}
+                className="bg-trading-card border-trading-border"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-initialCapital">Initial Capital (₹)</Label>
+              <Input
+                id="edit-initialCapital"
+                name="initialCapital"
+                type="number"
+                defaultValue={editFormData.initialCapital}
+                min="1000"
+                step="1000"
+                className="bg-trading-card border-trading-border"
+                required
+              />
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditModalOpen(false)}
+                className="flex-1 border-trading-border"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                disabled={duplicateBacktestMutation.isPending}
+              >
+                {duplicateBacktestMutation.isPending ? "Creating..." : "Create New Test"}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
