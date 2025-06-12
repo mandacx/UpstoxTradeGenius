@@ -434,7 +434,7 @@ class EnhancedBacktestingEngine {
       });
     }
 
-    const result = {
+    const result: BacktestResult = {
       trades,
       metrics: {
         totalReturn: 0,

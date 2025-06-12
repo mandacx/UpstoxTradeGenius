@@ -245,6 +245,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cancel backtest endpoint
+  app.post("/api/backtests/:id/cancel", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await cancelBacktest(Number(id));
+      res.json({ message: "Backtest cancelled successfully" });
+    } catch (error) {
+      console.error("Error cancelling backtest:", error);
+      res.status(500).json({ error: "Failed to cancel backtest" });
+    }
+  });
+
+  // Get backtest trades endpoint
+  app.get("/api/backtests/:id/trades", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const trades = await storage.getBacktestTrades(Number(id));
+      res.json(trades);
+    } catch (error) {
+      console.error("Error fetching backtest trades:", error);
+      res.status(500).json({ error: "Failed to fetch backtest trades" });
+    }
+  });
+
   // Modules endpoints
   app.get("/api/modules", async (req, res) => {
     try {

@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,21 +7,31 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
-import { PlayIcon, ChartBarIcon, TrendingUpIcon, TrendingDownIcon } from "lucide-react";
+import { PlayIcon, ChartBarIcon, TrendingUpIcon, TrendingDownIcon, StopCircleIcon, EyeIcon, CalendarIcon } from "lucide-react";
 
 export default function Backtesting() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedBacktest, setSelectedBacktest] = useState<any>(null);
+  const [showTradesModal, setShowTradesModal] = useState(false);
   const { toast } = useToast();
 
-  const { data: backtests, isLoading } = useQuery({
+  const { data: backtests = [], isLoading } = useQuery({
     queryKey: ["/api/backtests"],
+    refetchInterval: 2000, // Refetch every 2 seconds for progress updates
   });
 
-  const { data: strategies } = useQuery({
+  const { data: strategies = [] } = useQuery({
     queryKey: ["/api/strategies"],
+  });
+
+  const { data: selectedBacktestTrades = [] } = useQuery({
+    queryKey: ["/api/backtests", selectedBacktest?.id, "trades"],
+    enabled: !!selectedBacktest,
   });
 
   const createBacktestMutation = useMutation({
@@ -46,18 +56,88 @@ export default function Backtesting() {
     },
   });
 
+  const cancelBacktestMutation = useMutation({
+    mutationFn: async (backtestId: number) => {
+      const response = await apiRequest("POST", `/api/backtests/${backtestId}/cancel`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/backtests"] });
+      toast({
+        title: "Backtest Cancelled",
+        description: "The backtest has been cancelled successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel backtest",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateBacktest = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    
     const data = {
-      name: formData.get("name") as string,
-      strategyId: parseInt(formData.get("strategyId") as string),
-      startDate: new Date(formData.get("startDate") as string),
-      endDate: new Date(formData.get("endDate") as string),
-      initialCapital: parseFloat(formData.get("initialCapital") as string),
+      name: formData.get("name"),
+      strategyId: Number(formData.get("strategyId")),
+      symbol: formData.get("symbol"),
+      timeframe: formData.get("timeframe"),
+      startDate: formData.get("startDate"),
+      endDate: formData.get("endDate"),
+      initialCapital: Number(formData.get("initialCapital")),
     };
+    
     createBacktestMutation.mutate(data);
   };
+
+  const getStatusBadge = (status: string) => {
+    const variants = {
+      pending: "bg-yellow-600",
+      running: "bg-blue-600 animate-pulse",
+      completed: "bg-green-600",
+      cancelled: "bg-gray-600",
+      error: "bg-red-600"
+    };
+    return variants[status as keyof typeof variants] || "bg-gray-600";
+  };
+
+  const formatCurrency = (value: string | number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR'
+    }).format(Number(value));
+  };
+
+  const formatPercentage = (value: string | number) => {
+    return `${(Number(value) * 100).toFixed(2)}%`;
+  };
+
+  // Stock/Index options
+  const symbolOptions = [
+    { value: "NIFTY", label: "NIFTY 50" },
+    { value: "BANKNIFTY", label: "BANK NIFTY" },
+    { value: "RELIANCE", label: "Reliance Industries" },
+    { value: "TCS", label: "Tata Consultancy Services" },
+    { value: "HDFCBANK", label: "HDFC Bank" },
+    { value: "INFY", label: "Infosys" },
+    { value: "ICICIBANK", label: "ICICI Bank" },
+    { value: "HINDUNILVR", label: "Hindustan Unilever" },
+    { value: "ITC", label: "ITC Limited" },
+    { value: "KOTAKBANK", label: "Kotak Mahindra Bank" }
+  ];
+
+  // Timeframe options
+  const timeframeOptions = [
+    { value: "1minute", label: "1 Minute" },
+    { value: "5minute", label: "5 Minutes" },
+    { value: "15minute", label: "15 Minutes" },
+    { value: "1hour", label: "1 Hour" },
+    { value: "1day", label: "1 Day" }
+  ];
 
   if (isLoading) {
     return (
@@ -71,111 +151,135 @@ export default function Backtesting() {
     );
   }
 
-  const completedBacktests = backtests?.filter((b: any) => b.status === "completed") || [];
-  const runningBacktests = backtests?.filter((b: any) => b.status === "running") || [];
-  const avgReturn = completedBacktests.length > 0 
-    ? completedBacktests.reduce((sum: number, b: any) => sum + parseFloat(b.totalReturn || "0"), 0) / completedBacktests.length
-    : 0;
+  const runningBacktests = backtests.filter((bt: any) => bt.status === 'running');
+  const completedBacktests = backtests.filter((bt: any) => bt.status === 'completed');
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Backtesting Engine</h1>
-          <p className="text-gray-400">Test your strategies against historical data</p>
-        </div>
+        <h1 className="text-3xl font-bold">Strategy Backtesting</h1>
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-trading-blue hover:bg-blue-600 text-white">
+            <Button className="bg-blue-600 hover:bg-blue-700">
               <PlayIcon className="w-4 h-4 mr-2" />
               New Backtest
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-trading-card border-trading-border">
+          <DialogContent className="sm:max-w-[600px] bg-trading-card border-trading-border">
             <DialogHeader>
               <DialogTitle>Create New Backtest</DialogTitle>
             </DialogHeader>
-            
             <form onSubmit={handleCreateBacktest} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Backtest Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder="My Strategy Backtest"
-                  required
-                  className="bg-gray-700 border-gray-600"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Backtest Name</Label>
+                  <Input 
+                    id="name" 
+                    name="name" 
+                    placeholder="My Strategy Backtest"
+                    required 
+                    className="bg-trading-dark border-trading-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="strategyId">Strategy</Label>
+                  <Select name="strategyId" required>
+                    <SelectTrigger className="bg-trading-dark border-trading-border">
+                      <SelectValue placeholder="Select strategy" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-trading-card border-trading-border">
+                      {strategies.map((strategy: any) => (
+                        <SelectItem key={strategy.id} value={strategy.id.toString()}>
+                          {strategy.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-
-              <div>
-                <Label htmlFor="strategyId">Select Strategy</Label>
-                <Select name="strategyId" required>
-                  <SelectTrigger className="bg-gray-700 border-gray-600">
-                    <SelectValue placeholder="Choose a strategy..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {strategies?.map((strategy: any) => (
-                      <SelectItem key={strategy.id} value={strategy.id.toString()}>
-                        {strategy.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="symbol">Stock/Index</Label>
+                  <Select name="symbol" required>
+                    <SelectTrigger className="bg-trading-dark border-trading-border">
+                      <SelectValue placeholder="Select symbol" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-trading-card border-trading-border">
+                      {symbolOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="timeframe">Timeframe</Label>
+                  <Select name="timeframe" required>
+                    <SelectTrigger className="bg-trading-dark border-trading-border">
+                      <SelectValue placeholder="Select timeframe" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-trading-card border-trading-border">
+                      {timeframeOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="startDate">Start Date</Label>
-                  <Input
-                    id="startDate"
-                    name="startDate"
+                  <Input 
+                    id="startDate" 
+                    name="startDate" 
                     type="date"
-                    defaultValue="2024-01-01"
-                    required
-                    className="bg-gray-700 border-gray-600"
+                    required 
+                    className="bg-trading-dark border-trading-border"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="endDate">End Date</Label>
-                  <Input
-                    id="endDate"
-                    name="endDate"
+                  <Input 
+                    id="endDate" 
+                    name="endDate" 
                     type="date"
-                    defaultValue="2024-12-31"
-                    required
-                    className="bg-gray-700 border-gray-600"
+                    required 
+                    className="bg-trading-dark border-trading-border"
                   />
                 </div>
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="initialCapital">Initial Capital (₹)</Label>
-                <Input
-                  id="initialCapital"
-                  name="initialCapital"
+                <Input 
+                  id="initialCapital" 
+                  name="initialCapital" 
                   type="number"
-                  defaultValue="100000"
+                  placeholder="100000"
                   min="1000"
-                  step="1000"
-                  required
-                  className="bg-gray-700 border-gray-600"
+                  required 
+                  className="bg-trading-dark border-trading-border"
                 />
               </div>
 
-              <div className="flex justify-end space-x-2">
-                <Button
-                  type="button"
-                  variant="outline"
+              <div className="flex justify-end gap-3">
+                <Button 
+                  type="button" 
+                  variant="outline" 
                   onClick={() => setIsCreateModalOpen(false)}
+                  className="border-trading-border"
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
+                <Button 
+                  type="submit" 
                   disabled={createBacktestMutation.isPending}
-                  className="bg-trading-blue hover:bg-blue-600 text-white"
+                  className="bg-blue-600 hover:bg-blue-700"
                 >
                   {createBacktestMutation.isPending ? "Starting..." : "Start Backtest"}
                 </Button>
@@ -185,149 +289,212 @@ export default function Backtesting() {
         </Dialog>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Running Backtests */}
+      {runningBacktests.length > 0 && (
         <Card className="bg-trading-card border-trading-border">
-          <CardContent className="p-6">
-            <div>
-              <p className="text-gray-400 text-sm">Total Backtests</p>
-              <p className="text-2xl font-bold mt-1">{backtests?.length || 0}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-trading-card border-trading-border">
-          <CardContent className="p-6">
-            <div>
-              <p className="text-gray-400 text-sm">Running</p>
-              <p className="text-2xl font-bold mt-1 text-yellow-500">{runningBacktests.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-trading-card border-trading-border">
-          <CardContent className="p-6">
-            <div>
-              <p className="text-gray-400 text-sm">Completed</p>
-              <p className="text-2xl font-bold mt-1 text-profit-green">{completedBacktests.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-trading-card border-trading-border">
-          <CardContent className="p-6">
-            <div>
-              <p className="text-gray-400 text-sm">Avg Return</p>
-              <p className={`text-2xl font-bold mt-1 ${
-                avgReturn >= 0 ? 'text-profit-green' : 'text-loss-red'
-              }`}>
-                {avgReturn >= 0 ? '+' : ''}{avgReturn.toFixed(1)}%
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Backtests List */}
-      <div className="grid grid-cols-1 gap-4">
-        {!backtests || backtests.length === 0 ? (
-          <Card className="bg-trading-card border-trading-border">
-            <CardContent className="p-8 text-center">
-              <ChartBarIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No Backtests Yet</h3>
-              <p className="text-gray-400 mb-4">
-                Create your first backtest to evaluate strategy performance.
-              </p>
-              <Button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="bg-trading-blue hover:bg-blue-600 text-white"
-              >
-                <PlayIcon className="w-4 h-4 mr-2" />
-                Start Backtest
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          backtests.map((backtest: any) => {
-            const totalReturn = parseFloat(backtest.totalReturn || "0");
-            const sharpeRatio = parseFloat(backtest.sharpeRatio || "0");
-            const maxDrawdown = parseFloat(backtest.maxDrawdown || "0");
-            const winRate = parseFloat(backtest.winRate || "0");
-
-            return (
-              <Card key={backtest.id} className="bg-trading-card border-trading-border">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+              Running Backtests
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {runningBacktests.map((backtest: any) => (
+                <div key={backtest.id} className="p-4 bg-trading-dark rounded-lg border border-trading-border">
+                  <div className="flex items-center justify-between mb-3">
                     <div>
-                      <h3 className="text-lg font-semibold">{backtest.name}</h3>
-                      <p className="text-gray-400 text-sm">
-                        {new Date(backtest.startDate).toLocaleDateString()} - {new Date(backtest.endDate).toLocaleDateString()}
+                      <h3 className="font-semibold">{backtest.name}</h3>
+                      <p className="text-sm text-gray-400">
+                        {backtest.symbol} • {backtest.timeframe}
                       </p>
                     </div>
-                    <Badge variant={
-                      backtest.status === "completed" ? "default" :
-                      backtest.status === "running" ? "secondary" : "destructive"
-                    }>
-                      {backtest.status}
-                    </Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => cancelBacktestMutation.mutate(backtest.id)}
+                      disabled={cancelBacktestMutation.isPending}
+                      className="border-red-600 text-red-400 hover:bg-red-600/10"
+                    >
+                      <StopCircleIcon className="w-4 h-4 mr-1" />
+                      Cancel
+                    </Button>
                   </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Progress</span>
+                      <span>{backtest.progress || 0}%</span>
+                    </div>
+                    <Progress value={backtest.progress || 0} className="h-2" />
+                    <p className="text-xs text-gray-400">{backtest.progressMessage || "Processing..."}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-                  {backtest.status === "completed" && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="p-4 bg-gray-800/50 rounded-lg">
-                        <p className="text-xs text-gray-400 uppercase tracking-wide">Total Return</p>
-                        <p className={`text-xl font-bold mt-1 ${
-                          totalReturn >= 0 ? 'text-profit-green' : 'text-loss-red'
-                        }`}>
-                          {totalReturn >= 0 ? '+' : ''}{totalReturn.toFixed(1)}%
-                        </p>
+      {/* Completed Backtests */}
+      <Card className="bg-trading-card border-trading-border">
+        <CardHeader>
+          <CardTitle>Backtest Results</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {completedBacktests.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <ChartBarIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No completed backtests yet</p>
+              <p className="text-sm">Start your first backtest to see results here</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {completedBacktests.map((backtest: any) => (
+                <Card key={backtest.id} className="bg-trading-dark border-trading-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="font-semibold mb-1">{backtest.name}</h3>
+                        <div className="flex items-center gap-4 text-sm text-gray-400">
+                          <span>{backtest.symbol} • {backtest.timeframe}</span>
+                          <span className="flex items-center gap-1">
+                            <CalendarIcon className="w-4 h-4" />
+                            {new Date(backtest.startDate).toLocaleDateString()} - {new Date(backtest.endDate).toLocaleDateString()}
+                          </span>
+                        </div>
                       </div>
-                      
-                      <div className="p-4 bg-gray-800/50 rounded-lg">
-                        <p className="text-xs text-gray-400 uppercase tracking-wide">Sharpe Ratio</p>
-                        <p className="text-xl font-bold mt-1">{sharpeRatio.toFixed(2)}</p>
-                      </div>
-                      
-                      <div className="p-4 bg-gray-800/50 rounded-lg">
-                        <p className="text-xs text-gray-400 uppercase tracking-wide">Max Drawdown</p>
-                        <p className="text-xl font-bold text-loss-red mt-1">-{maxDrawdown.toFixed(1)}%</p>
-                      </div>
-                      
-                      <div className="p-4 bg-gray-800/50 rounded-lg">
-                        <p className="text-xs text-gray-400 uppercase tracking-wide">Win Rate</p>
-                        <p className="text-xl font-bold mt-1">{winRate.toFixed(1)}%</p>
+                      <div className="flex items-center gap-2">
+                        <Badge className={`${getStatusBadge(backtest.status)} text-white`}>
+                          {backtest.status}
+                        </Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedBacktest(backtest);
+                            setShowTradesModal(true);
+                          }}
+                          className="border-trading-border"
+                        >
+                          <EyeIcon className="w-4 h-4 mr-1" />
+                          View Trades
+                        </Button>
                       </div>
                     </div>
-                  )}
-
-                  {backtest.status === "running" && (
-                    <div className="p-4 bg-yellow-500/10 rounded-lg">
-                      <div className="flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-500 border-t-transparent mr-2"></div>
-                        <span className="text-yellow-500">Backtest in progress...</span>
+                    
+                    {backtest.status === 'completed' && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-green-400">
+                            {formatPercentage(backtest.totalReturn || 0)}
+                          </div>
+                          <div className="text-xs text-gray-400">Total Return</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold">
+                            {(backtest.sharpeRatio || 0).toFixed(2)}
+                          </div>
+                          <div className="text-xs text-gray-400">Sharpe Ratio</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-red-400">
+                            {formatPercentage(backtest.maxDrawdown || 0)}
+                          </div>
+                          <div className="text-xs text-gray-400">Max Drawdown</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold">
+                            {backtest.totalTrades || 0}
+                          </div>
+                          <div className="text-xs text-gray-400">Total Trades</div>
+                        </div>
                       </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700">
-                    <div className="text-sm text-gray-400">
-                      Capital: ₹{parseFloat(backtest.initialCapital).toLocaleString()}
-                      {backtest.totalTrades && (
-                        <span className="ml-4">Trades: {backtest.totalTrades}</span>
-                      )}
-                    </div>
-                    {backtest.status === "completed" && (
-                      <Button variant="outline" size="sm">
-                        View Details
-                      </Button>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
-      </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Trades Modal */}
+      <Dialog open={showTradesModal} onOpenChange={setShowTradesModal}>
+        <DialogContent className="max-w-6xl max-h-[80vh] overflow-hidden bg-trading-card border-trading-border">
+          <DialogHeader>
+            <DialogTitle>
+              Backtest Trades - {selectedBacktest?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-auto">
+            {selectedBacktestTrades && selectedBacktestTrades.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-trading-border">
+                    <TableHead>Symbol</TableHead>
+                    <TableHead>Side</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Entry Price</TableHead>
+                    <TableHead>Exit Price</TableHead>
+                    <TableHead>Entry Time</TableHead>
+                    <TableHead>Exit Time</TableHead>
+                    <TableHead>P&L</TableHead>
+                    <TableHead>P&L %</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedBacktestTrades.map((trade: any) => (
+                    <TableRow key={trade.id} className="border-trading-border">
+                      <TableCell className="font-medium">{trade.symbol}</TableCell>
+                      <TableCell>
+                        <Badge className={trade.side === 'BUY' ? 'bg-green-600' : 'bg-red-600'}>
+                          {trade.side}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{trade.quantity}</TableCell>
+                      <TableCell>{formatCurrency(trade.entryPrice)}</TableCell>
+                      <TableCell>
+                        {trade.exitPrice ? formatCurrency(trade.exitPrice) : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(trade.entryTime).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        {trade.exitTime ? new Date(trade.exitTime).toLocaleString() : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`font-semibold ${
+                          Number(trade.pnl) >= 0 ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {trade.pnl ? formatCurrency(trade.pnl) : '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`font-semibold ${
+                          Number(trade.pnlPercent) >= 0 ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {trade.pnlPercent ? formatPercentage(trade.pnlPercent / 100) : '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={trade.status === 'closed' ? 'bg-gray-600' : 'bg-yellow-600'}>
+                          {trade.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8 text-gray-400">
+                <p>No trades available for this backtest</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
