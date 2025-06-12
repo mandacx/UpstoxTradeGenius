@@ -492,6 +492,12 @@ class EnhancedBacktestingEngine {
         } else if (signal.action === 'SELL' && currentPosition >= 0) {
           // Close long position if any
           if (openTrade && openTrade.side === 'BUY') {
+            // Validate exit price is reasonable
+            if (!isValidPrice(openTrade.entryPrice, currentCandle.close)) {
+              console.warn(`Skipping unrealistic trade: entry ${openTrade.entryPrice}, exit ${currentCandle.close}`);
+              continue;
+            }
+            
             const pnl = (currentCandle.close - openTrade.entryPrice) * openTrade.quantity;
             const pnlPercent = (pnl / (openTrade.entryPrice * openTrade.quantity)) * 100;
             
@@ -548,36 +554,42 @@ class EnhancedBacktestingEngine {
     // Close any remaining open position
     if (openTrade) {
       const lastCandle = historicalData[historicalData.length - 1];
-      const pnl = openTrade.side === 'BUY' 
-        ? (lastCandle.close - openTrade.entryPrice) * openTrade.quantity
-        : (openTrade.entryPrice - lastCandle.close) * openTrade.quantity;
-      const pnlPercent = (pnl / (openTrade.entryPrice * openTrade.quantity)) * 100;
       
-      const completedTrade = {
-        ...openTrade,
-        exitPrice: lastCandle.close,
-        exitTime: lastCandle.timestamp,
-        pnl,
-        pnlPercent,
-        status: 'closed',
-        reason: 'End of backtest period'
-      };
-      
-      trades.push(completedTrade);
-      await storage.createBacktestTrade({
-        backtestId,
-        symbol: completedTrade.symbol,
-        side: completedTrade.side,
-        quantity: completedTrade.quantity,
-        entryPrice: completedTrade.entryPrice.toString(),
-        exitPrice: completedTrade.exitPrice.toString(),
-        entryTime: new Date(completedTrade.entryTime),
-        exitTime: new Date(completedTrade.exitTime),
-        pnl: completedTrade.pnl.toString(),
-        pnlPercent: completedTrade.pnlPercent.toString(),
-        status: completedTrade.status,
-        reason: completedTrade.reason
-      });
+      // Validate exit price is reasonable for end-of-backtest closing
+      if (isValidPrice(openTrade.entryPrice, lastCandle.close)) {
+        const pnl = openTrade.side === 'BUY' 
+          ? (lastCandle.close - openTrade.entryPrice) * openTrade.quantity
+          : (openTrade.entryPrice - lastCandle.close) * openTrade.quantity;
+        const pnlPercent = (pnl / (openTrade.entryPrice * openTrade.quantity)) * 100;
+        
+        const completedTrade = {
+          ...openTrade,
+          exitPrice: lastCandle.close,
+          exitTime: lastCandle.timestamp,
+          pnl,
+          pnlPercent,
+          status: 'closed',
+          reason: 'End of backtest period'
+        };
+        
+        trades.push(completedTrade);
+        await storage.createBacktestTrade({
+          backtestId,
+          symbol: completedTrade.symbol,
+          side: completedTrade.side,
+          quantity: completedTrade.quantity,
+          entryPrice: completedTrade.entryPrice.toString(),
+          exitPrice: completedTrade.exitPrice.toString(),
+          entryTime: new Date(completedTrade.entryTime),
+          exitTime: new Date(completedTrade.exitTime),
+          pnl: completedTrade.pnl.toString(),
+          pnlPercent: completedTrade.pnlPercent.toString(),
+          status: completedTrade.status,
+          reason: completedTrade.reason
+        });
+      } else {
+        console.warn(`Skipping unrealistic end-of-backtest trade: entry ${openTrade.entryPrice}, exit ${lastCandle.close}`);
+      }
     }
 
     const result: BacktestResult = {
