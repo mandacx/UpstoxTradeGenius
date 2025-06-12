@@ -20,16 +20,16 @@ export default function Backtesting() {
   const [showTradesModal, setShowTradesModal] = useState(false);
   const { toast } = useToast();
 
-  const { data: backtests = [], isLoading } = useQuery({
+  const { data: backtests = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/backtests"],
     refetchInterval: 2000, // Refetch every 2 seconds for progress updates
   });
 
-  const { data: strategies = [] } = useQuery({
+  const { data: strategies = [] } = useQuery<any[]>({
     queryKey: ["/api/strategies"],
   });
 
-  const { data: selectedBacktestTrades = [] } = useQuery({
+  const { data: selectedBacktestTrades = [] } = useQuery<any[]>({
     queryKey: ["/api/backtests", selectedBacktest?.id, "trades"],
     enabled: !!selectedBacktest,
   });
@@ -151,8 +151,8 @@ export default function Backtesting() {
     );
   }
 
-  const runningBacktests = backtests.filter((bt: any) => bt.status === 'running');
-  const completedBacktests = backtests.filter((bt: any) => bt.status === 'completed');
+  const runningBacktests = (backtests as any[]).filter((bt: any) => bt.status === 'running');
+  const completedBacktests = (backtests as any[]).filter((bt: any) => bt.status === 'completed');
 
   return (
     <div className="p-6 space-y-6">
@@ -188,7 +188,7 @@ export default function Backtesting() {
                       <SelectValue placeholder="Select strategy" />
                     </SelectTrigger>
                     <SelectContent className="bg-trading-card border-trading-border">
-                      {strategies.map((strategy: any) => (
+                      {(strategies as any[]).map((strategy: any) => (
                         <SelectItem key={strategy.id} value={strategy.id.toString()}>
                           {strategy.name}
                         </SelectItem>
@@ -428,7 +428,7 @@ export default function Backtesting() {
             </DialogTitle>
           </DialogHeader>
           <div className="overflow-auto">
-            {selectedBacktestTrades && selectedBacktestTrades.length > 0 ? (
+            {(selectedBacktestTrades as any[]) && (selectedBacktestTrades as any[]).length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow className="border-trading-border">
@@ -445,7 +445,7 @@ export default function Backtesting() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {selectedBacktestTrades.map((trade: any) => (
+                  {(selectedBacktestTrades as any[]).map((trade: any) => (
                     <TableRow key={trade.id} className="border-trading-border">
                       <TableCell className="font-medium">{trade.symbol}</TableCell>
                       <TableCell>
