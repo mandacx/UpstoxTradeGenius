@@ -1,8 +1,9 @@
 import { 
-  users, accounts, positions, trades, strategies, backtests, modules, logs, configurations,
+  users, accounts, positions, trades, strategies, backtests, backtestTrades, modules, logs, configurations,
   type User, type InsertUser, type Account, type InsertAccount,
   type Position, type InsertPosition, type Trade, type InsertTrade,
   type Strategy, type InsertStrategy, type Backtest, type InsertBacktest,
+  type BacktestTrade, type InsertBacktestTrade,
   type Module, type InsertModule, type Log, type InsertLog,
   type Configuration, type InsertConfiguration
 } from "@shared/schema";
@@ -218,6 +219,28 @@ export class DatabaseStorage implements IStorage {
       .where(eq(backtests.id, id))
       .returning();
     return backtest;
+  }
+
+  // Backtest trades operations
+  async getBacktestTrades(backtestId: number): Promise<BacktestTrade[]> {
+    return await db.select().from(backtestTrades).where(eq(backtestTrades.backtestId, backtestId)).orderBy(backtestTrades.entryTime);
+  }
+
+  async createBacktestTrade(trade: InsertBacktestTrade): Promise<BacktestTrade> {
+    const [newTrade] = await db
+      .insert(backtestTrades)
+      .values(trade)
+      .returning();
+    return newTrade;
+  }
+
+  async updateBacktestTrade(id: number, data: Partial<BacktestTrade>): Promise<BacktestTrade> {
+    const [trade] = await db
+      .update(backtestTrades)
+      .set(data)
+      .where(eq(backtestTrades.id, id))
+      .returning();
+    return trade;
   }
 
   // Module operations

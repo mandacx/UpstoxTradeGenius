@@ -4,7 +4,7 @@ import { WebSocketServer } from "ws";
 import { storage } from "./storage";
 import { setupWebSocket } from "./websocket";
 import { generateStrategy } from "./openai";
-import { runBacktest } from "./backtesting";
+import { runEnhancedBacktest, cancelBacktest } from "./enhanced-backtesting";
 import { upstoxService, getValidUpstoxToken } from "./upstox";
 import { configService } from "./config-service";
 import { insertStrategySchema, insertBacktestSchema, insertLogSchema, upstoxAuthSchema, upstoxAccountLinkSchema } from "@shared/schema";
@@ -214,11 +214,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const backtest = await storage.createBacktest(validatedData);
       
-      // Run backtest asynchronously
-      runBacktest(backtest.id).catch(error => {
+      // Run enhanced backtest asynchronously
+      runEnhancedBacktest(backtest.id).catch(error => {
         console.error("Backtest execution failed:", error);
         storage.updateBacktest(backtest.id, { 
           status: "error",
+          progressMessage: `Error: ${error.message}`,
           completedAt: new Date()
         });
       });
