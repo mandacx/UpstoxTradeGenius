@@ -435,10 +435,10 @@ class EnhancedBacktestingEngine {
             },
             rsi: (prices: number[], period: number) => this.calculateRSI(prices, period),
             buy: (symbol: string, quantity: number, price: number, timestamp: string) => {
-              return { action: 'BUY', quantity, price, timestamp, reason: `RSI Buy Signal (RSI: ${currentRSI?.toFixed(2)})` };
+              return { action: 'BUY', quantity, price, timestamp, reason: `Long Entry - RSI ${currentRSI?.toFixed(1)}` };
             },
             sell: (symbol: string, quantity: number, price: number, timestamp: string) => {
-              return { action: 'SELL', quantity, price, timestamp, reason: `RSI Sell Signal (RSI: ${currentRSI?.toFixed(2)})` };
+              return { action: 'SELL', quantity, price, timestamp, reason: `Long Exit - RSI ${currentRSI?.toFixed(1)}` };
             },
             console: { log: () => {} }
           }
@@ -629,7 +629,7 @@ class EnhancedBacktestingEngine {
           pnl,
           pnlPercent,
           status: 'closed',
-          reason: 'End of backtest period'
+          reason: 'Position Closed at End'
         };
         
         trades.push(completedTrade);
