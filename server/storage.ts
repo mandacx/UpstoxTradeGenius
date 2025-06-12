@@ -8,7 +8,7 @@ import {
   type Configuration, type InsertConfiguration
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gte, lte, like, or } from "drizzle-orm";
+import { eq, desc, and, ne, gte, lte, like, or } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -196,7 +196,7 @@ export class DatabaseStorage implements IStorage {
 
   // Backtest operations
   async getBacktests(userId: number): Promise<Backtest[]> {
-    return await db.select().from(backtests).where(eq(backtests.userId, userId)).orderBy(desc(backtests.createdAt));
+    return await db.select().from(backtests).where(and(eq(backtests.userId, userId), ne(backtests.status, "deleted"))).orderBy(desc(backtests.createdAt));
   }
 
   async getBacktest(id: number): Promise<Backtest | undefined> {

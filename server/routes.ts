@@ -257,6 +257,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete backtest endpoint
+  app.delete("/api/backtests/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const backtestId = Number(id);
+      
+      // First delete all associated backtest trades
+      const trades = await storage.getBacktestTrades(backtestId);
+      for (const trade of trades) {
+        await storage.updateBacktestTrade(trade.id, { status: 'deleted' });
+      }
+      
+      // Mark backtest as deleted (soft delete)
+      await storage.updateBacktest(backtestId, { 
+        status: "deleted",
+        progressMessage: "Deleted by user"
+      });
+      
+      res.json({ message: "Backtest deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting backtest:", error);
+      res.status(500).json({ error: "Failed to delete backtest" });
+    }
+  });
+
+  // Create backtest from existing (edit/duplicate)
+  app.post("/api/backtests/:id/duplicate", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = 1; // In real app, get from session
+      const originalBacktest = await storage.getBacktest(Number(id));
+      
+      if (!originalBacktest) {
+        return res.status(404).json({ error: "Original backtest not found" });
+      }
+
+      // Parse update data and merge with original
+      const updateData = req.body;
+      
+      // Find the next incremental number for the name
+      const baseName = originalBacktest.name.replace(/_\d+$/, ''); // Remove existing suffix
+      const existingBacktests = await storage.getBacktests(userId);
+      const relatedBacktests = existingBacktests.filter(bt => bt.name.startsWith(baseName));
+      const maxNumber = relatedBacktests.reduce((max, bt) => {
+        const match = bt.name.match(/_(\d+)$/);
+        const num = match ? parseInt(match[1]) : 0;
+        return Math.max(max, num);
+      }, 0);
+      
+      const newName = `${baseName}_${maxNumber + 1}`;
+      
+      const newBacktest = await storage.createBacktest({
+        userId,
+        strategyId: originalBacktest.strategyId,
+        name: newName,
+        symbol: updateData.symbol || originalBacktest.symbol,
+        timeframe: updateData.timeframe || originalBacktest.timeframe,
+        startDate: updateData.startDate || originalBacktest.startDate,
+        endDate: updateData.endDate || originalBacktest.endDate,
+        initialCapital: updateData.initialCapital || originalBacktest.initialCapital,
+        status: "pending"
+      });
+      
+      // Run enhanced backtest asynchronously
+      runEnhancedBacktest(newBacktest.id).catch(error => {
+        console.error("Backtest execution failed:", error);
+        storage.updateBacktest(newBacktest.id, { 
+          status: "error",
+          progressMessage: `Error: ${error.message}`,
+          completedAt: new Date()
+        });
+      });
+      
+      res.status(201).json(newBacktest);
+    } catch (error) {
+      console.error("Error duplicating backtest:", error);
+      res.status(500).json({ error: "Failed to duplicate backtest" });
+    }
+  });
+
   // Get backtest trades endpoint
   app.get("/api/backtests/:id/trades", async (req, res) => {
     try {
