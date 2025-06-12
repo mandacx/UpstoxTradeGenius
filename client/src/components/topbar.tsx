@@ -191,19 +191,37 @@ export default function Topbar() {
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
-      localStorage.removeItem("authToken");
+      // Clear all authentication data
+      localStorage.clear();
+      sessionStorage.clear();
       queryClient.clear();
+      
+      // Clear all cookies
+      document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+      });
+      
       toast({
         title: "Logged out",
         description: "You have been successfully logged out.",
       });
-      setLocation("/login");
+      
+      // Redirect to home page instead of login
+      window.location.href = "/";
     },
     onError: () => {
-      // Even if the server request fails, clear local storage
-      localStorage.removeItem("authToken");
+      // Even if the server request fails, clear all authentication data
+      localStorage.clear();
+      sessionStorage.clear();
       queryClient.clear();
-      setLocation("/login");
+      
+      // Clear all cookies
+      document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+      });
+      
+      // Redirect to home page
+      window.location.href = "/";
     },
   });
 

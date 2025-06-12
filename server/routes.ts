@@ -232,11 +232,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clear the auth token from user record
       await storage.updateUser(userId, { lastAuthToken: null });
       
+      // Clear all session cookies
+      res.clearCookie('connect.sid', { path: '/' });
+      res.clearCookie('session', { path: '/' });
+      res.clearCookie('auth', { path: '/' });
+      
       req.session.destroy((err: any) => {
         if (err) {
           console.error("Session destroy error:", err);
           return res.status(500).json({ error: "Failed to log out" });
         }
+        
+        // Set additional headers to prevent caching
+        res.set({
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        });
+        
         res.json({ message: "Logged out successfully" });
       });
     } catch (error: any) {
