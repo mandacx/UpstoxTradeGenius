@@ -354,12 +354,27 @@ export default function Account() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Configuration Status Alert */}
+            {(!savedConfig?.clientId || !savedConfig?.hasClientSecret) && (
+              <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Setup Required:</strong> Configure your Upstox API credentials below to enable trading features. 
+                  You'll need to create an app in your Upstox Developer Console first.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* API Configuration Display */}
             <div className="border rounded-lg p-4 bg-muted/20">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">API Configuration</h3>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">Production</Badge>
+                  {savedConfig?.clientId && savedConfig?.hasClientSecret ? (
+                    <Badge className="bg-green-100 text-green-800">Configured</Badge>
+                  ) : (
+                    <Badge variant="destructive">Not Configured</Badge>
+                  )}
                   {!isEditingConfig ? (
                     <Button
                       variant="outline"
@@ -419,7 +434,7 @@ export default function Account() {
                     />
                   ) : (
                     <p className="font-mono text-sm bg-background p-2 rounded border">
-                      {configForm.clientId}
+                      {configForm.clientId || <span className="text-muted-foreground italic">Not configured</span>}
                     </p>
                   )}
                 </div>
@@ -519,109 +534,119 @@ export default function Account() {
               )}
             </div>
 
-            {upstoxStatus?.isLinked ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Upstox User ID</p>
-                    <p className="font-medium">{upstoxStatus.upstoxUserId}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Token Status</p>
-                    <div className="flex items-center gap-2">
-                      {upstoxStatus.needsRefresh ? (
-                        <Badge variant="destructive">Expired</Badge>
-                      ) : (
-                        <Badge className="bg-green-100 text-green-800">Active</Badge>
-                      )}
-                      {upstoxStatus.tokenExpiry && (
-                        <span className="text-sm text-muted-foreground">
-                          Expires: {new Date(upstoxStatus.tokenExpiry).toLocaleDateString()}
-                        </span>
-                      )}
+            {/* Connection Status */}
+            {savedConfig?.clientId && savedConfig?.hasClientSecret ? (
+              upstoxStatus?.isLinked ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Upstox User ID</p>
+                      <p className="font-medium">{upstoxStatus.upstoxUserId}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Token Status</p>
+                      <div className="flex items-center gap-2">
+                        {upstoxStatus.needsRefresh ? (
+                          <Badge variant="destructive">Expired</Badge>
+                        ) : (
+                          <Badge className="bg-green-100 text-green-800">Active</Badge>
+                        )}
+                        {upstoxStatus.tokenExpiry && (
+                          <span className="text-sm text-muted-foreground">
+                            Expires: {new Date(upstoxStatus.tokenExpiry).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {upstoxStatus.needsRefresh && (
+                  {upstoxStatus.needsRefresh && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Your Upstox access token has expired. Please refresh it to continue trading.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => refreshTokenMutation.mutate()}
+                      disabled={refreshTokenMutation.isPending}
+                      variant="outline"
+                    >
+                      Refresh Token
+                    </Button>
+                    <Button
+                      onClick={handleUnlinkAccount}
+                      disabled={isUnlinking}
+                      variant="destructive"
+                    >
+                      <Unlink className="w-4 h-4 mr-2" />
+                      Unlink Account
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      Your Upstox access token has expired. Please refresh it to continue trading.
+                      Connect your Upstox account to enable live trading, real-time market data, and portfolio synchronization.
                     </AlertDescription>
                   </Alert>
-                )}
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium mb-2">Benefits of linking your Upstox account:</h4>
+                      <ul className="text-sm text-muted-foreground space-y-1 pl-4">
+                        <li>• Execute trades directly from the platform</li>
+                        <li>• Access real-time market data and quotes</li>
+                        <li>• Sync your portfolio and positions</li>
+                        <li>• View live account balance and margins</li>
+                        <li>• Get automated trade notifications</li>
+                      </ul>
+                    </div>
 
-                <div className="flex gap-2">
+                    <div className="border-l-4 border-blue-500 pl-4 py-2">
+                      <p className="text-sm font-medium">Setup Instructions:</p>
+                      <ol className="text-sm text-muted-foreground mt-1 space-y-1">
+                        <li>1. Ensure you have an active Upstox trading account</li>
+                        <li>2. Click "Connect to Upstox" below to start OAuth flow</li>
+                        <li>3. Login with your Upstox credentials in the popup window</li>
+                        <li>4. Grant permission for API access</li>
+                        <li>5. You'll be redirected back and account will be linked</li>
+                      </ol>
+                    </div>
+                  </div>
+
                   <Button
-                    onClick={() => refreshTokenMutation.mutate()}
-                    disabled={refreshTokenMutation.isPending}
-                    variant="outline"
+                    onClick={handleLinkAccount}
+                    disabled={isLinking}
+                    className="w-full"
+                    size="lg"
                   >
-                    Refresh Token
-                  </Button>
-                  <Button
-                    onClick={handleUnlinkAccount}
-                    disabled={isUnlinking}
-                    variant="destructive"
-                  >
-                    <Unlink className="w-4 h-4 mr-2" />
-                    Unlink Account
+                    {isLinking ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                        Connecting to Upstox...
+                      </>
+                    ) : (
+                      <>
+                        <Link className="w-4 h-4 mr-2" />
+                        Connect to Upstox
+                      </>
+                    )}
                   </Button>
                 </div>
-              </div>
+              )
             ) : (
-              <div className="space-y-6">
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Connect your Upstox account to enable live trading, real-time market data, and portfolio synchronization.
-                  </AlertDescription>
-                </Alert>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Benefits of linking your Upstox account:</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1 pl-4">
-                      <li>• Execute trades directly from the platform</li>
-                      <li>• Access real-time market data and quotes</li>
-                      <li>• Sync your portfolio and positions</li>
-                      <li>• View live account balance and margins</li>
-                      <li>• Get automated trade notifications</li>
-                    </ul>
-                  </div>
-
-                  <div className="border-l-4 border-blue-500 pl-4 py-2">
-                    <p className="text-sm font-medium">Setup Instructions:</p>
-                    <ol className="text-sm text-muted-foreground mt-1 space-y-1">
-                      <li>1. Ensure you have an active Upstox trading account</li>
-                      <li>2. Click "Connect to Upstox" below to start OAuth flow</li>
-                      <li>3. Login with your Upstox credentials in the popup window</li>
-                      <li>4. Grant permission for API access</li>
-                      <li>5. You'll be redirected back and account will be linked</li>
-                    </ol>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleLinkAccount}
-                  disabled={isLinking}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isLinking ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                      Connecting to Upstox...
-                    </>
-                  ) : (
-                    <>
-                      <Link className="w-4 h-4 mr-2" />
-                      Connect to Upstox
-                    </>
-                  )}
-                </Button>
-              </div>
+              <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Configuration Required:</strong> Please configure your Upstox API credentials above before connecting your account.
+                </AlertDescription>
+              </Alert>
             )}
           </CardContent>
         </Card>
