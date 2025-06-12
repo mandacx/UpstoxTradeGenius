@@ -286,9 +286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Try token-based auth as fallback
       if (authToken) {
-        console.log("Looking for token:", authToken);
         const allUsers = await storage.getAllUsers();
-        console.log("Found users with tokens:", allUsers.map(u => ({ id: u.id, username: u.username, hasToken: !!u.lastAuthToken, tokenLength: u.lastAuthToken?.length })));
         const user = allUsers.find(u => u.lastAuthToken === authToken);
         
         if (user) {
@@ -296,7 +294,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const { password, ...userResponse } = user;
           return res.json(userResponse);
         }
-        console.log("No user found with matching token");
       }
       
       console.log("No valid authentication found, returning 401");
