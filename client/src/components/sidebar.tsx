@@ -11,7 +11,9 @@ import {
   ScrollTextIcon,
   ActivityIcon,
   UserIcon,
-  ShieldIcon
+  ShieldIcon,
+  CrownIcon,
+  PieChartIcon
 } from "lucide-react";
 
 const navigation = [
@@ -20,7 +22,9 @@ const navigation = [
   { name: "Trade History", href: "/trades", icon: ArrowRightLeftIcon },
   { name: "AI Strategies", href: "/strategies", icon: Bot },
   { name: "Backtesting", href: "/backtesting", icon: BarChart3Icon },
+  { name: "Analytics", href: "/analytics", icon: PieChartIcon },
   { name: "Account", href: "/account", icon: UserIcon },
+  { name: "Subscription", href: "/subscription", icon: CrownIcon },
   { name: "Modules", href: "/modules", icon: SettingsIcon },
   { name: "Logs & Errors", href: "/logs", icon: ScrollTextIcon },
 ];

@@ -19,6 +19,8 @@ import Logs from "@/pages/logs";
 import Account from "@/pages/account";
 import Preferences from "@/pages/preferences";
 import Admin from "@/pages/admin";
+import Subscription from "@/pages/subscription";
+import Analytics from "@/pages/analytics";
 import Sidebar from "@/components/sidebar";
 import Topbar from "@/components/topbar";
 
@@ -40,6 +42,8 @@ function AuthenticatedApp() {
             <Route path="/logs" component={Logs} />
             <Route path="/account" component={Account} />
             <Route path="/preferences" component={Preferences} />
+            <Route path="/subscription" component={Subscription} />
+            <Route path="/analytics" component={Analytics} />
             <Route path="/admin" component={Admin} />
             <Route component={NotFound} />
           </Switch>

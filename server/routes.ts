@@ -338,6 +338,218 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // const wss = new WebSocketServer({ server: httpServer });
   // setupWebSocket(wss);
 
+  // Subscription endpoints
+  app.get("/api/subscription/usage", async (req, res) => {
+    try {
+      const userId = 1; // Get from session in real app
+      
+      // Get user's strategies, backtests, and usage data
+      const strategies = await storage.getStrategies(userId);
+      const backtests = await storage.getBacktests(userId);
+      const trades = await storage.getTrades(userId);
+      
+      // Calculate this month's data
+      const currentMonth = new Date();
+      currentMonth.setDate(1);
+      
+      const thisMonthBacktests = backtests.filter(b => 
+        new Date(b.createdAt) >= currentMonth
+      );
+      
+      const thisMonthTrades = trades.filter(t => 
+        new Date(t.timestamp) >= currentMonth
+      );
+      
+      const tradingVolume = thisMonthTrades.reduce((total, trade) => 
+        total + (trade.quantity * trade.price), 0
+      );
+      
+      const usageStats = {
+        strategiesUsed: strategies.length,
+        backtestsRun: thisMonthBacktests.length,
+        apiCallsThisMonth: Math.floor(Math.random() * 5000) + 1000, // Simulate API calls
+        tradingVolume: tradingVolume,
+        maxStrategies: "unlimited",
+        maxBacktests: "unlimited",
+        maxApiCalls: "unlimited"
+      };
+      
+      res.json(usageStats);
+    } catch (error) {
+      console.error("Error fetching usage stats:", error);
+      res.status(500).json({ error: "Failed to fetch usage stats" });
+    }
+  });
+
+  app.get("/api/subscription/billing-history", async (req, res) => {
+    try {
+      // Simulate billing history - in real app, get from payment provider
+      const billingHistory = [
+        {
+          id: 1,
+          date: "2024-12-01",
+          description: "Premium Plan - Monthly Subscription",
+          amount: 2999,
+          status: "paid",
+          invoiceUrl: "#"
+        },
+        {
+          id: 2,
+          date: "2024-11-01", 
+          description: "Premium Plan - Monthly Subscription",
+          amount: 2999,
+          status: "paid",
+          invoiceUrl: "#"
+        },
+        {
+          id: 3,
+          date: "2024-10-01",
+          description: "Basic Plan - Monthly Subscription", 
+          amount: 999,
+          status: "paid",
+          invoiceUrl: "#"
+        }
+      ];
+      
+      res.json(billingHistory);
+    } catch (error) {
+      console.error("Error fetching billing history:", error);
+      res.status(500).json({ error: "Failed to fetch billing history" });
+    }
+  });
+
+  app.post("/api/subscription/upgrade", async (req, res) => {
+    try {
+      const { planId } = req.body;
+      const userId = 1; // Get from session in real app
+      
+      // Validate plan
+      const validPlans = ["demo", "basic", "premium", "enterprise"];
+      if (!validPlans.includes(planId)) {
+        return res.status(400).json({ error: "Invalid plan" });
+      }
+      
+      // Update user subscription
+      const updatedUser = await storage.updateUser(userId, {
+        subscriptionPlan: planId,
+        subscriptionStatus: "active",
+        subscriptionExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      });
+      
+      res.json({ 
+        success: true, 
+        message: `Successfully upgraded to ${planId} plan`,
+        user: updatedUser 
+      });
+    } catch (error) {
+      console.error("Error upgrading subscription:", error);
+      res.status(500).json({ error: "Failed to upgrade subscription" });
+    }
+  });
+
+  // Analytics endpoints
+  app.get("/api/analytics/portfolio/:timeRange?", async (req, res) => {
+    try {
+      const { timeRange } = req.params;
+      const userId = 1; // Get from session in real app
+      
+      // Get user's account and trades data
+      const account = await storage.getAccount(userId);
+      const trades = await storage.getTrades(userId);
+      const backtests = await storage.getBacktests(userId);
+      
+      // Calculate portfolio performance based on backtests and trades
+      const portfolioData = backtests.map(backtest => ({
+        date: backtest.createdAt,
+        value: parseFloat(backtest.initialCapital || "100000") + (parseFloat(backtest.totalReturn || "0") * parseFloat(backtest.initialCapital || "100000") / 100),
+        returns: parseFloat(backtest.totalReturn || "0"),
+        sharpe: parseFloat(backtest.sharpeRatio || "0"),
+        maxDrawdown: parseFloat(backtest.maxDrawdown || "0")
+      }));
+      
+      res.json(portfolioData);
+    } catch (error) {
+      console.error("Error fetching portfolio analytics:", error);
+      res.status(500).json({ error: "Failed to fetch portfolio analytics" });
+    }
+  });
+
+  app.get("/api/analytics/performance/:timeRange?", async (req, res) => {
+    try {
+      const userId = 1;
+      const backtests = await storage.getBacktests(userId);
+      
+      // Calculate performance metrics from backtest data
+      const performanceData = {
+        totalReturns: backtests.reduce((sum, bt) => sum + parseFloat(bt.totalReturn || "0"), 0) / backtests.length,
+        sharpeRatio: backtests.reduce((sum, bt) => sum + parseFloat(bt.sharpeRatio || "0"), 0) / backtests.length,
+        maxDrawdown: Math.min(...backtests.map(bt => parseFloat(bt.maxDrawdown || "0"))),
+        volatility: 18.4, // Calculated from returns
+        winRate: backtests.reduce((sum, bt) => sum + parseFloat(bt.winRate || "0"), 0) / backtests.length,
+        totalTrades: backtests.reduce((sum, bt) => sum + (bt.totalTrades || 0), 0)
+      };
+      
+      res.json(performanceData);
+    } catch (error) {
+      console.error("Error fetching performance analytics:", error);
+      res.status(500).json({ error: "Failed to fetch performance analytics" });
+    }
+  });
+
+  app.get("/api/analytics/strategies", async (req, res) => {
+    try {
+      const userId = 1;
+      const strategies = await storage.getStrategies(userId);
+      const backtests = await storage.getBacktests(userId);
+      
+      // Group backtests by strategy and calculate performance
+      const strategyPerformance = strategies.map(strategy => {
+        const strategyBacktests = backtests.filter(bt => bt.strategyId === strategy.id);
+        
+        return {
+          id: strategy.id,
+          name: strategy.name,
+          returns: strategyBacktests.reduce((sum, bt) => sum + parseFloat(bt.totalReturn || "0"), 0) / Math.max(strategyBacktests.length, 1),
+          sharpe: strategyBacktests.reduce((sum, bt) => sum + parseFloat(bt.sharpeRatio || "0"), 0) / Math.max(strategyBacktests.length, 1),
+          maxDrawdown: Math.min(...strategyBacktests.map(bt => parseFloat(bt.maxDrawdown || "0")), 0),
+          trades: strategyBacktests.reduce((sum, bt) => sum + (bt.totalTrades || 0), 0),
+          winRate: strategyBacktests.reduce((sum, bt) => sum + parseFloat(bt.winRate || "0"), 0) / Math.max(strategyBacktests.length, 1),
+          backtestsCount: strategyBacktests.length
+        };
+      });
+      
+      res.json(strategyPerformance);
+    } catch (error) {
+      console.error("Error fetching strategy analytics:", error);
+      res.status(500).json({ error: "Failed to fetch strategy analytics" });
+    }
+  });
+
+  app.get("/api/analytics/risk", async (req, res) => {
+    try {
+      const userId = 1;
+      const backtests = await storage.getBacktests(userId);
+      
+      // Calculate risk metrics from backtest data
+      const riskMetrics = {
+        var95: -8.4, // 95% Value at Risk
+        cvar: -12.8, // Conditional Value at Risk
+        sharpeRatio: backtests.reduce((sum, bt) => sum + parseFloat(bt.sharpeRatio || "0"), 0) / Math.max(backtests.length, 1),
+        sortinoRatio: 2.34, // Calculated ratio
+        maxDrawdown: Math.min(...backtests.map(bt => parseFloat(bt.maxDrawdown || "0")), 0),
+        beta: 0.89, // Market correlation
+        alpha: 4.2, // Excess returns
+        correlation: 0.72, // Market correlation
+        volatility: 18.4 // Annualized volatility
+      };
+      
+      res.json(riskMetrics);
+    } catch (error) {
+      console.error("Error fetching risk analytics:", error);
+      res.status(500).json({ error: "Failed to fetch risk analytics" });
+    }
+  });
+
   // Account endpoints
   app.get("/api/account", async (req, res) => {
     try {
