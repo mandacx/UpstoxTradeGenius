@@ -276,7 +276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!user) {
           return res.status(404).json({ error: "User not found" });
         }
-        console.log("User found, returning user data");
+        console.log("User found, returning user data with role:", user.role);
         const { password, ...userResponse } = user;
         res.json(userResponse);
       })

@@ -33,7 +33,7 @@ export default function Sidebar() {
     retry: false,
   });
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = (user as any)?.role === 'admin';
 
   return (
     <aside className="w-64 bg-trading-card border-r border-trading-border flex-shrink-0">
