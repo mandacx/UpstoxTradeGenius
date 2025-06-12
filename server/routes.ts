@@ -92,6 +92,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create simple auth token for localStorage-based auth
       const authToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
       
+      // Store the auth token in the user record for validation
+      await storage.updateUser(user.id, { lastAuthToken: authToken });
+      
       console.log("Auth token created for user:", user.id, "Token:", authToken.substring(0, 8) + "...");
       
       // Remove password from response
@@ -123,15 +126,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "No auth token provided" });
       }
       
-      // Simple validation - check against demo credentials
-      if (authToken && authToken.length > 10) {
-        // For demo purposes, return the demo user
-        const demoUser = await storage.getUserByEmail("demo@tradingpro.ai");
-        if (demoUser) {
-          console.log("Token validation successful for demo user");
-          const { password, ...userResponse } = demoUser;
-          return res.json(userResponse);
-        }
+      // Find user by their stored auth token
+      const allUsers = await storage.getAllUsers();
+      const user = allUsers.find(u => u.lastAuthToken === authToken);
+      
+      if (user) {
+        console.log("Token validation successful for user:", user.username, "ID:", user.id);
+        const { password, ...userResponse } = user;
+        return res.json(userResponse);
       }
       
       return res.status(401).json({ error: "Invalid auth token" });
