@@ -78,31 +78,31 @@ export default function Account() {
   const handleLinkAccount = async () => {
     try {
       setIsLinking(true);
-      const response: { authUrl: string } = await apiRequest({
-        method: "GET",
-        url: "/api/upstox/auth-url",
-        body: {},
-      });
+      
+      // Make API request to get auth URL
+      const res = await apiRequest("GET", "/api/upstox/auth-url");
+      const response: { authUrl: string } = await res.json();
       
       // Open Upstox OAuth in new window
       window.open(response.authUrl, "_blank");
       
       // Poll for status updates
       const pollInterval = setInterval(async () => {
-        const status: UpstoxStatus = await apiRequest({
-          method: "GET",
-          url: "/api/upstox/account-status",
-          body: {},
-        });
-        
-        if (status.isLinked) {
-          clearInterval(pollInterval);
-          setIsLinking(false);
-          queryClient.invalidateQueries({ queryKey: ["/api/upstox/account-status"] });
-          toast({
-            title: "Account Linked",
-            description: "Your Upstox account has been linked successfully.",
-          });
+        try {
+          const statusRes = await apiRequest("GET", "/api/upstox/account-status");
+          const status: UpstoxStatus = await statusRes.json();
+          
+          if (status.isLinked) {
+            clearInterval(pollInterval);
+            setIsLinking(false);
+            queryClient.invalidateQueries({ queryKey: ["/api/upstox/account-status"] });
+            toast({
+              title: "Account Linked",
+              description: "Your Upstox account has been linked successfully.",
+            });
+          }
+        } catch (pollError) {
+          console.error("Error polling status:", pollError);
         }
       }, 3000);
       
