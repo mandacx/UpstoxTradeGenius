@@ -8,7 +8,8 @@ import {
   BarChart3Icon, 
   SettingsIcon, 
   ScrollTextIcon,
-  ActivityIcon
+  ActivityIcon,
+  UserIcon
 } from "lucide-react";
 
 const navigation = [
@@ -17,6 +18,7 @@ const navigation = [
   { name: "Trade History", href: "/trades", icon: ArrowRightLeftIcon },
   { name: "AI Strategies", href: "/strategies", icon: Bot },
   { name: "Backtesting", href: "/backtesting", icon: BarChart3Icon },
+  { name: "Account", href: "/account", icon: UserIcon },
   { name: "Modules", href: "/modules", icon: SettingsIcon },
   { name: "Logs & Errors", href: "/logs", icon: ScrollTextIcon },
 ];

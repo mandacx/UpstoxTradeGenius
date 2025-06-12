@@ -78,9 +78,10 @@ export default function Account() {
   const handleLinkAccount = async () => {
     try {
       setIsLinking(true);
-      const response = await apiRequest({
+      const response: { authUrl: string } = await apiRequest({
         method: "GET",
         url: "/api/upstox/auth-url",
+        body: {},
       });
       
       // Open Upstox OAuth in new window
@@ -88,9 +89,10 @@ export default function Account() {
       
       // Poll for status updates
       const pollInterval = setInterval(async () => {
-        const status = await apiRequest({
+        const status: UpstoxStatus = await apiRequest({
           method: "GET",
           url: "/api/upstox/account-status",
+          body: {},
         });
         
         if (status.isLinked) {
