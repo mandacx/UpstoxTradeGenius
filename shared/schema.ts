@@ -8,6 +8,9 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   upstoxUserId: text("upstox_user_id"),
   upstoxAccessToken: text("upstox_access_token"),
+  upstoxRefreshToken: text("upstox_refresh_token"),
+  upstoxTokenExpiry: timestamp("upstox_token_expiry"),
+  isUpstoxLinked: boolean("is_upstox_linked").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -109,6 +112,18 @@ export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
 });
 
+export const upstoxAuthSchema = z.object({
+  authorizationCode: z.string(),
+  redirectUri: z.string().optional(),
+});
+
+export const upstoxAccountLinkSchema = z.object({
+  accessToken: z.string(),
+  refreshToken: z.string().optional(),
+  userId: z.string(),
+  expiryTime: z.string().optional(),
+});
+
 export const insertStrategySchema = createInsertSchema(strategies).omit({
   id: true,
   createdAt: true,
@@ -130,6 +145,10 @@ export const insertBacktestSchema = createInsertSchema(backtests).omit({
   id: true,
   createdAt: true,
   completedAt: true,
+}).extend({
+  startDate: z.string().transform((str) => new Date(str)),
+  endDate: z.string().transform((str) => new Date(str)),
+  initialCapital: z.union([z.string(), z.number()]).transform((val) => val.toString()),
 });
 
 export const insertModuleSchema = createInsertSchema(modules).omit({
