@@ -25,30 +25,50 @@ class WebSocketManager {
 
       ws.on("message", (data: Buffer) => {
         try {
-          const message = JSON.parse(data.toString());
+          // Handle binary data properly
+          const messageStr = data.toString('utf8');
+          if (!messageStr || messageStr.trim() === '') {
+            return; // Ignore empty messages
+          }
+          
+          // Additional validation for JSON format
+          if (!messageStr.startsWith('{') && !messageStr.startsWith('[')) {
+            console.log("Ignoring non-JSON message:", messageStr);
+            return;
+          }
+          
+          const message = JSON.parse(messageStr);
           this.handleMessage(client, message);
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);
-          this.sendError(client, "Invalid message format");
+          // Silently ignore invalid messages to prevent crash
         }
       });
 
-      ws.on("close", () => {
+      ws.on("close", (code, reason) => {
         this.clients.delete(client);
-        console.log("WebSocket client disconnected");
+        console.log(`WebSocket client disconnected: ${code} ${reason}`);
       });
 
       ws.on("error", (error) => {
-        console.error("WebSocket error:", error);
+        console.error("WebSocket client error:", error);
         this.clients.delete(client);
       });
 
-      // Send initial connection confirmation
-      this.sendMessage(client, {
-        type: "connection",
-        status: "connected",
-        timestamp: new Date().toISOString(),
-      });
+      // Send initial connection confirmation with error handling
+      try {
+        this.sendMessage(client, {
+          type: "connection",
+          status: "connected",
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error("Error sending initial message:", error);
+      }
+    });
+
+    wss.on("error", (error) => {
+      console.error("WebSocket server error:", error);
     });
 
     // Start periodic updates
@@ -102,8 +122,13 @@ class WebSocketManager {
   }
 
   private sendMessage(client: Client, message: any) {
-    if (client.ws.readyState === WebSocket.OPEN) {
-      client.ws.send(JSON.stringify(message));
+    try {
+      if (client.ws.readyState === WebSocket.OPEN) {
+        client.ws.send(JSON.stringify(message));
+      }
+    } catch (error) {
+      console.error("Error sending WebSocket message:", error);
+      this.clients.delete(client);
     }
   }
 
@@ -138,7 +163,7 @@ class WebSocketManager {
         });
 
         // Fetch quotes for subscribed symbols
-        for (const symbol of subscribedSymbols) {
+        for (const symbol of Array.from(subscribedSymbols)) {
           try {
             const quote = await upstoxService.getQuote(symbol);
             this.broadcast({

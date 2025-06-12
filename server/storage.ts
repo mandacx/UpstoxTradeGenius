@@ -228,8 +228,6 @@ export class DatabaseStorage implements IStorage {
 
   // Log operations
   async getLogs(filters: { level?: string; module?: string }, limit: number, offset: number): Promise<Log[]> {
-    let query = db.select().from(logs);
-    
     const conditions = [];
     if (filters.level) {
       conditions.push(eq(logs.level, filters.level));
@@ -238,8 +236,14 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(logs.module, filters.module));
     }
     
+    const query = db.select().from(logs);
+    
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      return await query
+        .where(and(...conditions))
+        .orderBy(desc(logs.createdAt))
+        .limit(limit)
+        .offset(offset);
     }
     
     return await query

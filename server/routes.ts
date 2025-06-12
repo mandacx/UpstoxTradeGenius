@@ -10,10 +10,10 @@ import { insertStrategySchema, insertBacktestSchema, insertLogSchema } from "@sh
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
-  const wss = new WebSocketServer({ server: httpServer });
   
-  // Setup WebSocket
-  setupWebSocket(wss);
+  // Temporarily disable WebSocket to prevent crashes
+  // const wss = new WebSocketServer({ server: httpServer });
+  // setupWebSocket(wss);
 
   // Account endpoints
   app.get("/api/account", async (req, res) => {
