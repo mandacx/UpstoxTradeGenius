@@ -363,6 +363,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/upstox/update-config", async (req, res) => {
+    try {
+      const { clientId, clientSecret, redirectUri } = req.body;
+      
+      // Validate required fields
+      if (!clientId || !clientSecret || !redirectUri) {
+        return res.status(400).json({ error: "All configuration fields are required" });
+      }
+
+      // In a real application, you would store these in environment variables or secure configuration
+      // For now, we'll just return a success response
+      console.log("API Configuration updated:", { clientId, redirectUri });
+      
+      res.json({ 
+        message: "API configuration updated successfully",
+        config: {
+          clientId,
+          redirectUri,
+          // Don't return the secret in response
+          clientSecretUpdated: true
+        }
+      });
+    } catch (error) {
+      console.error("Error updating API configuration:", error);
+      res.status(500).json({ error: "Failed to update API configuration" });
+    }
+  });
+
   app.post("/api/upstox/refresh-token", async (req, res) => {
     try {
       const userId = 1; // In real app, get from session

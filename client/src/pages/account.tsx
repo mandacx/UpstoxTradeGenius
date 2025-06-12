@@ -86,16 +86,20 @@ export default function Account() {
   const updateConfigMutation = useMutation({
     mutationFn: async (config: typeof configForm) => {
       const res = await apiRequest("POST", "/api/upstox/update-config", config);
+      if (!res.ok) {
+        throw new Error(`Failed to update configuration: ${res.status}`);
+      }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setIsEditingConfig(false);
       toast({
         title: "Configuration Updated",
         description: "Your Upstox API configuration has been updated successfully.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Configuration update error:", error);
       toast({
         title: "Update Failed",
         description: "Failed to update API configuration. Please try again.",
