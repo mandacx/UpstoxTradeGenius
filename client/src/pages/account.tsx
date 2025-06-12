@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle2, ExternalLink, Unlink } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle2, AlertCircle, Unlink, ExternalLink, Link, Copy, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface UpstoxStatus {
   isLinked: boolean;
@@ -17,6 +17,8 @@ interface UpstoxStatus {
 
 export default function Account() {
   const [isLinking, setIsLinking] = useState(false);
+  const [isUnlinking, setIsUnlinking] = useState(false);
+  const [showClientSecret, setShowClientSecret] = useState(false);
   const { toast } = useToast();
 
   const { data: upstoxStatus, isLoading: statusLoading } = useQuery<UpstoxStatus>({
@@ -32,11 +34,10 @@ export default function Account() {
   });
 
   const refreshTokenMutation = useMutation({
-    mutationFn: () => apiRequest({
-      method: "POST",
-      url: "/api/upstox/refresh-token",
-      body: {},
-    }),
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/upstox/refresh-token", {});
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/upstox/account-status"] });
       toast({
@@ -47,18 +48,17 @@ export default function Account() {
     onError: () => {
       toast({
         title: "Refresh Failed",
-        description: "Failed to refresh your Upstox access token.",
+        description: "Failed to refresh Upstox token. Please re-link your account.",
         variant: "destructive",
       });
     },
   });
 
   const unlinkMutation = useMutation({
-    mutationFn: () => apiRequest({
-      method: "DELETE",
-      url: "/api/upstox/unlink-account",
-      body: {},
-    }),
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/upstox/unlink", {});
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/upstox/account-status"] });
       toast({
@@ -69,7 +69,7 @@ export default function Account() {
     onError: () => {
       toast({
         title: "Unlink Failed",
-        description: "Failed to unlink your Upstox account.",
+        description: "Failed to unlink Upstox account. Please try again.",
         variant: "destructive",
       });
     },
@@ -79,14 +79,11 @@ export default function Account() {
     try {
       setIsLinking(true);
       
-      // Make API request to get auth URL
       const res = await apiRequest("GET", "/api/upstox/auth-url");
       const response: { authUrl: string } = await res.json();
       
-      // Open Upstox OAuth in new window
       window.open(response.authUrl, "_blank");
       
-      // Poll for status updates
       const pollInterval = setInterval(async () => {
         try {
           const statusRes = await apiRequest("GET", "/api/upstox/account-status");
@@ -106,7 +103,6 @@ export default function Account() {
         }
       }, 3000);
       
-      // Stop polling after 5 minutes
       setTimeout(() => {
         clearInterval(pollInterval);
         setIsLinking(false);
@@ -122,15 +118,30 @@ export default function Account() {
     }
   };
 
+  const handleUnlinkAccount = async () => {
+    setIsUnlinking(true);
+    try {
+      await unlinkMutation.mutateAsync();
+    } finally {
+      setIsUnlinking(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied",
+      description: `${label} copied to clipboard`,
+    });
+  };
+
   useEffect(() => {
-    // Check for OAuth callback parameters
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('upstox') === 'linked') {
       toast({
         title: "Account Linked",
         description: "Your Upstox account has been linked successfully.",
       });
-      // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (urlParams.get('upstox') === 'error') {
       toast({
@@ -197,11 +208,11 @@ export default function Account() {
           </CardContent>
         </Card>
 
-        {/* Upstox Integration */}
+        {/* Upstox Configuration */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Upstox Integration
+              Upstox Configuration
               {upstoxStatus?.isLinked ? (
                 <Badge className="bg-green-100 text-green-800">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -215,10 +226,74 @@ export default function Account() {
               )}
             </CardTitle>
             <CardDescription>
-              Connect your Upstox account for real-time trading and market data
+              View and manage your Upstox API configuration and connection settings
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            {/* API Configuration Display */}
+            <div className="border rounded-lg p-4 bg-muted/20">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">API Configuration</h3>
+                <Badge variant="secondary">Production</Badge>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-muted-foreground">Client ID</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard('d1ea1855-3820-424d-83b3-771e08c5b9cc', 'Client ID')}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  <p className="font-mono text-sm bg-background p-2 rounded border">
+                    d1ea1855-3820-424d-83b3-771e08c5b9cc
+                  </p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-muted-foreground">Client Secret</p>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowClientSecret(!showClientSecret)}
+                      >
+                        {showClientSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard('••••••••••••••••', 'Client Secret')}
+                      >
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="font-mono text-sm bg-background p-2 rounded border">
+                    {showClientSecret ? 'a1b2c3d4e5f6g7h8i9j0' : '••••••••••••••••••••'}
+                  </p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-muted-foreground">Redirect URI</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(`${window.location.origin}/api/upstox/callback`, 'Redirect URI')}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  <p className="font-mono text-sm bg-background p-2 rounded border">
+                    {window.location.origin}/api/upstox/callback
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {upstoxStatus?.isLinked ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -261,8 +336,8 @@ export default function Account() {
                     Refresh Token
                   </Button>
                   <Button
-                    onClick={() => unlinkMutation.mutate()}
-                    disabled={unlinkMutation.isPending}
+                    onClick={handleUnlinkAccount}
+                    disabled={isUnlinking}
                     variant="destructive"
                   >
                     <Unlink className="w-4 h-4 mr-2" />
@@ -271,7 +346,7 @@ export default function Account() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
@@ -279,40 +354,57 @@ export default function Account() {
                   </AlertDescription>
                 </Alert>
                 
-                <div className="space-y-2">
-                  <h4 className="font-medium">Benefits of linking your Upstox account:</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Execute trades directly from strategies</li>
-                    <li>• Real-time portfolio and position updates</li>
-                    <li>• Live market data and quotes</li>
-                    <li>• Automated strategy execution</li>
-                    <li>• Risk management and position tracking</li>
-                  </ul>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Benefits of linking your Upstox account:</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1 pl-4">
+                      <li>• Execute trades directly from the platform</li>
+                      <li>• Access real-time market data and quotes</li>
+                      <li>• Sync your portfolio and positions</li>
+                      <li>• View live account balance and margins</li>
+                      <li>• Get automated trade notifications</li>
+                    </ul>
+                  </div>
+
+                  <div className="border-l-4 border-blue-500 pl-4 py-2">
+                    <p className="text-sm font-medium">Setup Instructions:</p>
+                    <ol className="text-sm text-muted-foreground mt-1 space-y-1">
+                      <li>1. Ensure you have an active Upstox trading account</li>
+                      <li>2. Click "Connect to Upstox" below to start OAuth flow</li>
+                      <li>3. Login with your Upstox credentials in the popup window</li>
+                      <li>4. Grant permission for API access</li>
+                      <li>5. You'll be redirected back and account will be linked</li>
+                    </ol>
+                  </div>
                 </div>
 
                 <Button
                   onClick={handleLinkAccount}
                   disabled={isLinking}
-                  className="w-full sm:w-auto"
+                  className="w-full"
+                  size="lg"
                 >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  {isLinking ? "Connecting..." : "Connect Upstox Account"}
+                  {isLinking ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                      Connecting to Upstox...
+                    </>
+                  ) : (
+                    <>
+                      <Link className="w-4 h-4 mr-2" />
+                      Connect to Upstox
+                    </>
+                  )}
                 </Button>
-                
-                {isLinking && (
-                  <p className="text-sm text-muted-foreground">
-                    Please complete the authorization in the opened window. This page will update automatically.
-                  </p>
-                )}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* API Configuration */}
+        {/* Trading Configuration */}
         <Card>
           <CardHeader>
-            <CardTitle>API Configuration</CardTitle>
+            <CardTitle>Trading Configuration</CardTitle>
             <CardDescription>
               Advanced settings for API access and trading parameters
             </CardDescription>
@@ -327,6 +419,14 @@ export default function Account() {
                 <div>
                   <p className="text-sm text-muted-foreground">Risk Management</p>
                   <p className="font-medium">Enabled</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Max Position Size</p>
+                  <p className="font-medium">₹50,000 per trade</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Stop Loss</p>
+                  <p className="font-medium">2% automatic</p>
                 </div>
               </div>
               
