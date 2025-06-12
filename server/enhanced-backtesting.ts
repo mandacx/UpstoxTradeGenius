@@ -223,34 +223,86 @@ class EnhancedBacktestingEngine {
     startDate: Date,
     endDate: Date
   ): Promise<any[]> {
-    try {
-      // Try to get real data from Upstox if token available
-      const userId = 1;
-      const accessToken = await getValidUpstoxToken(userId, storage);
-      
-      if (accessToken) {
-        console.log(`Fetching real historical data for ${symbol} from Upstox`);
-        const data = await upstoxService.getHistoricalData(
-          symbol,
-          startDate.toISOString().split('T')[0],
-          endDate.toISOString().split('T')[0],
-          timeframe,
-          accessToken
-        );
-        
-        if (data && data.length > 0) {
-          return data;
-        }
-      }
-      
-      // Generate realistic mock data for backtesting
-      console.log(`Generating mock data for ${symbol} (${timeframe})`);
-      return this.generateRealisticMockData(symbol, timeframe, startDate, endDate);
-    } catch (error) {
-      console.error(`Failed to fetch data for ${symbol}:`, error);
-      // Generate realistic mock data as fallback
-      return this.generateRealisticMockData(symbol, timeframe, startDate, endDate);
+    const userId = 1;
+    const accessToken = await getValidUpstoxToken(userId, storage);
+    
+    if (!accessToken) {
+      throw new Error("Upstox access token not available. Please link your Upstox account to fetch historical data.");
     }
+
+    try {
+      console.log(`Fetching historical data for ${symbol} from Upstox API`);
+      
+      // Convert symbol to Upstox format
+      const upstoxSymbol = this.convertSymbolToUpstox(symbol);
+      
+      // Convert timeframe to Upstox format
+      const upstoxTimeframe = this.convertTimeframeToUpstox(timeframe);
+      
+      // Format dates for Upstox API (YYYY-MM-DD)
+      const fromDate = startDate.toISOString().split('T')[0];
+      const toDate = endDate.toISOString().split('T')[0];
+      
+      const data = await upstoxService.getHistoricalData(
+        upstoxSymbol,
+        fromDate,
+        toDate,
+        accessToken,
+        upstoxTimeframe
+      );
+      
+      if (!data || data.length === 0) {
+        throw new Error(`No historical data available for ${symbol} from ${fromDate} to ${toDate}`);
+      }
+
+      console.log(`Retrieved ${data.length} candles for ${symbol}`);
+      return this.formatUpstoxData(data);
+      
+    } catch (error) {
+      console.error(`Failed to fetch Upstox data for ${symbol}:`, error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Cannot fetch historical data from Upstox: ${errorMessage}`);
+    }
+  }
+
+  private convertSymbolToUpstox(symbol: string): string {
+    // Map common symbols to Upstox instrument keys
+    const symbolMapping: { [key: string]: string } = {
+      'NIFTY': 'NSE_INDEX|Nifty 50',
+      'BANKNIFTY': 'NSE_INDEX|Nifty Bank',
+      'RELIANCE': 'NSE_EQ|INE002A01018',
+      'TCS': 'NSE_EQ|INE467B01029',
+      'HDFCBANK': 'NSE_EQ|INE040A01034',
+      'INFY': 'NSE_EQ|INE009A01021',
+      'ICICIBANK': 'NSE_EQ|INE090A01021',
+      'HINDUNILVR': 'NSE_EQ|INE030A01027',
+      'ITC': 'NSE_EQ|INE154A01025',
+      'KOTAKBANK': 'NSE_EQ|INE237A01028'
+    };
+    
+    return symbolMapping[symbol] || `NSE_EQ|${symbol}`;
+  }
+
+  private convertTimeframeToUpstox(timeframe: string): string {
+    const mapping: { [key: string]: string } = {
+      '1minute': '1minute',
+      '5minute': '5minute', 
+      '15minute': '15minute',
+      '1hour': '1hour',
+      '1day': 'day'
+    };
+    return mapping[timeframe] || 'day';
+  }
+
+  private formatUpstoxData(data: any[]): any[] {
+    return data.map(candle => ({
+      timestamp: new Date(candle.timestamp).toISOString(),
+      open: Number(candle.open),
+      high: Number(candle.high),
+      low: Number(candle.low),
+      close: Number(candle.close),
+      volume: Number(candle.volume || 0)
+    }));
   }
 
   private generateRealisticMockData(symbol: string, timeframe: string, startDate: Date, endDate: Date): any[] {
@@ -426,6 +478,12 @@ class EnhancedBacktestingEngine {
           })()
         `);
 
+        // Price validation helper
+        const isValidPrice = (entryPrice: number, exitPrice: number) => {
+          const priceChange = Math.abs((exitPrice - entryPrice) / entryPrice);
+          return priceChange <= 0.5; // Max 50% price change per trade
+        };
+
         // Process trading signals
         if (signal.action === 'BUY' && currentPosition <= 0) {
           // Close short position if any
@@ -544,12 +602,6 @@ class EnhancedBacktestingEngine {
         // Continue with next candle
       }
     }
-
-    // Price validation helper
-    const isValidPrice = (entryPrice: number, exitPrice: number) => {
-      const priceChange = Math.abs((exitPrice - entryPrice) / entryPrice);
-      return priceChange <= 0.5; // Max 50% price change per trade
-    };
 
     // Close any remaining open position
     if (openTrade) {
