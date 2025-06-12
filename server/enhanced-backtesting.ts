@@ -238,6 +238,7 @@ class EnhancedBacktestingEngine {
       
       // Convert timeframe to Upstox format
       const upstoxTimeframe = this.convertTimeframeToUpstox(timeframe);
+      console.log(`Converting timeframe: ${timeframe} -> ${upstoxTimeframe}`);
       
       // Format dates for Upstox API (YYYY-MM-DD)
       const fromDate = startDate.toISOString().split('T')[0];
@@ -286,9 +287,10 @@ class EnhancedBacktestingEngine {
   private convertTimeframeToUpstox(timeframe: string): string {
     const mapping: { [key: string]: string } = {
       '1minute': '1minute',
-      '5minute': '5minute', 
-      '15minute': '15minute',
-      '1hour': '1hour',
+      '5minute': '1minute', // Upstox doesn't support 5minute, use 1minute
+      '15minute': '30minute', // Upstox doesn't support 15minute, use 30minute
+      '30minute': '30minute',
+      '1hour': '30minute', // Upstox doesn't support 1hour, use 30minute
       '1day': 'day'
     };
     return mapping[timeframe] || 'day';
