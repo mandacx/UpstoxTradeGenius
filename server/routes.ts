@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { storage } from "./storage";
@@ -9,7 +9,6 @@ import { upstoxService, getValidUpstoxToken } from "./upstox";
 import { configService } from "./config-service";
 import { insertStrategySchema, insertBacktestSchema, insertLogSchema, upstoxAuthSchema, upstoxAccountLinkSchema, insertUserSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
-import session from "express-session";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -17,20 +16,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize configuration service
   await configService.initialize();
   
-  // Session configuration
-  app.use(session({
-    secret: process.env.SESSION_SECRET || 'trading-app-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: false, // Set to true in production with HTTPS
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-  }));
-  
   // Authentication middleware
-  const requireAuth = (req: any, res: any, next: any) => {
+  const requireAuth = (req: Request, res: Response, next: any) => {
     if (!req.session.userId) {
       return res.status(401).json({ error: "Authentication required" });
     }
@@ -66,7 +53,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Create user session
-      (req as any).session.userId = user.id;
+      req.session.userId = user.id;
       
       // Remove password from response
       const { password, ...userResponse } = user;
@@ -98,11 +85,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create user session
-      (req as any).session.userId = user.id;
+      req.session.userId = user.id;
       
-      // Remove password from response
-      const { password: _, ...userResponse } = user;
-      res.json(userResponse);
+      // Save session explicitly
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ error: "Failed to create session" });
+        }
+        
+        // Remove password from response
+        const { password: _, ...userResponse } = user;
+        res.json(userResponse);
+      });
     } catch (error: any) {
       console.error("Login error:", error);
       res.status(500).json({ error: "Failed to log in" });
@@ -110,7 +105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.post("/api/auth/logout", (req, res) => {
-    (req as any).session.destroy((err: any) => {
+    req.session.destroy((err: any) => {
       if (err) {
         return res.status(500).json({ error: "Failed to log out" });
       }
@@ -119,11 +114,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/auth/user", (req, res) => {
-    if (!(req as any).session.userId) {
+    if (!req.session.userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
     
-    storage.getUser((req as any).session.userId)
+    storage.getUser(req.session.userId)
       .then(user => {
         if (!user) {
           return res.status(404).json({ error: "User not found" });
