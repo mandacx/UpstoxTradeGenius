@@ -43,6 +43,11 @@ export interface IStorage {
   getBacktest(id: number): Promise<Backtest | undefined>;
   createBacktest(backtest: InsertBacktest): Promise<Backtest>;
   updateBacktest(id: number, data: Partial<Backtest>): Promise<Backtest>;
+  
+  // Backtest trades operations
+  getBacktestTrades(backtestId: number): Promise<BacktestTrade[]>;
+  createBacktestTrade(trade: InsertBacktestTrade): Promise<BacktestTrade>;
+  updateBacktestTrade(id: number, data: Partial<BacktestTrade>): Promise<BacktestTrade>;
 
   // Module operations
   getModules(): Promise<Module[]>;

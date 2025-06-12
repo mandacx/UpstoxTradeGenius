@@ -61,6 +61,8 @@ export const backtests = pgTable("backtests", {
   userId: integer("user_id").references(() => users.id),
   strategyId: integer("strategy_id").references(() => strategies.id),
   name: text("name").notNull(),
+  symbol: text("symbol").notNull(),
+  timeframe: text("timeframe").notNull(), // 1minute, 5minute, 1hour, 1day
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
   initialCapital: decimal("initial_capital", { precision: 15, scale: 2 }).notNull(),
@@ -70,10 +72,30 @@ export const backtests = pgTable("backtests", {
   maxDrawdown: decimal("max_drawdown", { precision: 8, scale: 4 }),
   winRate: decimal("win_rate", { precision: 8, scale: 4 }),
   totalTrades: integer("total_trades"),
+  progress: integer("progress").default(0), // 0-100
+  progressMessage: text("progress_message"),
   results: jsonb("results"),
-  status: text("status").default("pending"),
+  equityCurve: jsonb("equity_curve"),
+  status: text("status").default("pending"), // pending, running, completed, cancelled, error
   createdAt: timestamp("created_at").defaultNow(),
+  startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
+});
+
+export const backtestTrades = pgTable("backtest_trades", {
+  id: serial("id").primaryKey(),
+  backtestId: integer("backtest_id").references(() => backtests.id),
+  symbol: text("symbol").notNull(),
+  side: text("side").notNull(), // BUY or SELL
+  quantity: integer("quantity").notNull(),
+  entryPrice: decimal("entry_price", { precision: 12, scale: 4 }).notNull(),
+  exitPrice: decimal("exit_price", { precision: 12, scale: 4 }),
+  entryTime: timestamp("entry_time").notNull(),
+  exitTime: timestamp("exit_time"),
+  pnl: decimal("pnl", { precision: 12, scale: 4 }),
+  pnlPercent: decimal("pnl_percent", { precision: 8, scale: 4 }),
+  status: text("status").notNull().default("open"), // open, closed
+  reason: text("reason"), // signal reason or exit trigger
 });
 
 export const modules = pgTable("modules", {
@@ -160,10 +182,25 @@ export const insertBacktestSchema = createInsertSchema(backtests).omit({
   id: true,
   createdAt: true,
   completedAt: true,
+  startedAt: true,
+  progress: true,
+  progressMessage: true,
+  finalValue: true,
+  totalReturn: true,
+  sharpeRatio: true,
+  maxDrawdown: true,
+  winRate: true,
+  totalTrades: true,
+  results: true,
+  equityCurve: true,
 }).extend({
   startDate: z.string().transform((str) => new Date(str)),
   endDate: z.string().transform((str) => new Date(str)),
   initialCapital: z.union([z.string(), z.number()]).transform((val) => val.toString()),
+});
+
+export const insertBacktestTradeSchema = createInsertSchema(backtestTrades).omit({
+  id: true,
 });
 
 export const insertModuleSchema = createInsertSchema(modules).omit({
@@ -197,6 +234,8 @@ export type Trade = typeof trades.$inferSelect;
 export type InsertTrade = z.infer<typeof insertTradeSchema>;
 export type Backtest = typeof backtests.$inferSelect;
 export type InsertBacktest = z.infer<typeof insertBacktestSchema>;
+export type BacktestTrade = typeof backtestTrades.$inferSelect;
+export type InsertBacktestTrade = z.infer<typeof insertBacktestTradeSchema>;
 export type Module = typeof modules.$inferSelect;
 export type InsertModule = z.infer<typeof insertModuleSchema>;
 export type Log = typeof logs.$inferSelect;
