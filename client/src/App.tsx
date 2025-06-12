@@ -12,6 +12,7 @@ import Strategies from "@/pages/strategies";
 import Backtesting from "@/pages/backtesting";
 import Modules from "@/pages/modules";
 import Logs from "@/pages/logs";
+import Account from "@/pages/account";
 import Sidebar from "@/components/sidebar";
 import Topbar from "@/components/topbar";
 
@@ -31,6 +32,7 @@ function Router() {
             <Route path="/backtesting" component={Backtesting} />
             <Route path="/modules" component={Modules} />
             <Route path="/logs" component={Logs} />
+            <Route path="/account" component={Account} />
             <Route component={NotFound} />
           </Switch>
         </main>
