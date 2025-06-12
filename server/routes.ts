@@ -87,12 +87,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create user session
       req.session.userId = user.id;
       
-      // Save session explicitly
+      // Save session explicitly and debug
       req.session.save((err) => {
         if (err) {
           console.error("Session save error:", err);
           return res.status(500).json({ error: "Failed to create session" });
         }
+        
+        console.log("Session created successfully:", req.session.id, "for user:", user.id);
         
         // Remove password from response
         const { password: _, ...userResponse } = user;
@@ -114,7 +116,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/auth/user", (req, res) => {
+    console.log("Auth check - Session ID:", req.session.id, "User ID:", req.session.userId);
+    
     if (!req.session.userId) {
+      console.log("No session userId found, returning 401");
       return res.status(401).json({ error: "Not authenticated" });
     }
     
@@ -123,6 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!user) {
           return res.status(404).json({ error: "User not found" });
         }
+        console.log("User found, returning user data");
         const { password, ...userResponse } = user;
         res.json(userResponse);
       })

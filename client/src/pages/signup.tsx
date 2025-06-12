@@ -50,13 +50,23 @@ export default function Signup() {
       const response = await apiRequest("POST", "/api/auth/signup", data);
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    onSuccess: async () => {
+      // Wait for session to be properly set
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Invalidate and refetch auth queries
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+      
       toast({
         title: "Welcome to TradingPro AI!",
         description: "Your account has been created successfully.",
       });
-      setLocation("/dashboard");
+      
+      // Small delay before redirect to ensure auth state is updated
+      setTimeout(() => {
+        setLocation("/dashboard");
+      }, 200);
     },
     onError: (error: any) => {
       toast({

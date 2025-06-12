@@ -21,9 +21,11 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     secure: false, // Set to true in production with HTTPS
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
+    httpOnly: false, // Allow frontend access for debugging
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax' // Allow cross-origin requests
+  },
+  name: 'trading.sid' // Custom session name
 }));
 
 app.use((req, res, next) => {
