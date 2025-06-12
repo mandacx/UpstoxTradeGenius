@@ -14,6 +14,9 @@ export const users = pgTable("users", {
   upstoxAccessToken: text("upstox_access_token"),
   upstoxRefreshToken: text("upstox_refresh_token"),
   upstoxTokenExpiry: timestamp("upstox_token_expiry"),
+  upstoxClientId: text("upstox_client_id"),
+  upstoxClientSecret: text("upstox_client_secret"),
+  upstoxRedirectUri: text("upstox_redirect_uri"),
   isUpstoxLinked: boolean("is_upstox_linked").default(false),
   subscriptionPlan: text("subscription_plan").default("demo"), // demo, basic, pro, enterprise
   subscriptionStatus: text("subscription_status").default("active"), // active, cancelled, expired
