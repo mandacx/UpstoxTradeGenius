@@ -1,11 +1,17 @@
 import { 
   users, accounts, positions, trades, strategies, backtests, backtestTrades, modules, logs, configurations,
+  subscriptionPlans, userSubscriptions, paymentMethods, paymentTransactions, usageAnalytics,
   type User, type InsertUser, type Account, type InsertAccount,
   type Position, type InsertPosition, type Trade, type InsertTrade,
   type Strategy, type InsertStrategy, type Backtest, type InsertBacktest,
   type BacktestTrade, type InsertBacktestTrade,
   type Module, type InsertModule, type Log, type InsertLog,
-  type Configuration, type InsertConfiguration
+  type Configuration, type InsertConfiguration,
+  type SubscriptionPlan, type InsertSubscriptionPlan,
+  type UserSubscription, type InsertUserSubscription,
+  type PaymentMethod, type InsertPaymentMethod,
+  type PaymentTransaction, type InsertPaymentTransaction,
+  type UsageAnalytics, type InsertUsageAnalytics
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, ne, gte, lte, like, or } from "drizzle-orm";
@@ -68,6 +74,31 @@ export interface IStorage {
 
   // Additional user operations
   getAllUsers(): Promise<User[]>;
+
+  // Subscription operations
+  getSubscriptionPlans(): Promise<SubscriptionPlan[]>;
+  getActiveSubscriptionPlans(): Promise<SubscriptionPlan[]>;
+  getUserSubscription(userId: number): Promise<UserSubscription | undefined>;
+  createUserSubscription(subscription: InsertUserSubscription): Promise<UserSubscription>;
+  updateUserSubscription(id: number, data: Partial<UserSubscription>): Promise<UserSubscription>;
+  cancelUserSubscription(id: number, reason?: string): Promise<UserSubscription>;
+
+  // Payment method operations
+  getUserPaymentMethods(userId: number): Promise<PaymentMethod[]>;
+  createPaymentMethod(paymentMethod: InsertPaymentMethod): Promise<PaymentMethod>;
+  updatePaymentMethod(id: number, data: Partial<PaymentMethod>): Promise<PaymentMethod>;
+  deletePaymentMethod(id: number): Promise<void>;
+  setDefaultPaymentMethod(userId: number, paymentMethodId: number): Promise<void>;
+
+  // Payment transaction operations
+  getUserTransactions(userId: number, limit?: number, offset?: number): Promise<PaymentTransaction[]>;
+  createTransaction(transaction: InsertPaymentTransaction): Promise<PaymentTransaction>;
+  updateTransaction(id: number, data: Partial<PaymentTransaction>): Promise<PaymentTransaction>;
+
+  // Usage analytics operations
+  getUserUsageAnalytics(userId: number, feature?: string): Promise<UsageAnalytics[]>;
+  createUsageAnalytics(analytics: InsertUsageAnalytics): Promise<UsageAnalytics>;
+  getUsageStatsByUser(userId: number): Promise<{ feature: string; totalValue: number }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -343,6 +374,159 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
+  }
+
+  // Subscription operations
+  async getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    return await db.select().from(subscriptionPlans);
+  }
+
+  async getActiveSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    return await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.isActive, true));
+  }
+
+  async getUserSubscription(userId: number): Promise<UserSubscription | undefined> {
+    const [subscription] = await db.select()
+      .from(userSubscriptions)
+      .where(and(
+        eq(userSubscriptions.userId, userId),
+        eq(userSubscriptions.status, "active")
+      ))
+      .orderBy(desc(userSubscriptions.createdAt))
+      .limit(1);
+    return subscription;
+  }
+
+  async createUserSubscription(subscription: InsertUserSubscription): Promise<UserSubscription> {
+    const [result] = await db.insert(userSubscriptions).values(subscription).returning();
+    return result;
+  }
+
+  async updateUserSubscription(id: number, data: Partial<UserSubscription>): Promise<UserSubscription> {
+    const [result] = await db.update(userSubscriptions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(userSubscriptions.id, id))
+      .returning();
+    return result;
+  }
+
+  async cancelUserSubscription(id: number, reason?: string): Promise<UserSubscription> {
+    const [result] = await db.update(userSubscriptions)
+      .set({ 
+        status: "cancelled", 
+        cancelledAt: new Date(),
+        cancellationReason: reason,
+        updatedAt: new Date()
+      })
+      .where(eq(userSubscriptions.id, id))
+      .returning();
+    return result;
+  }
+
+  // Payment method operations
+  async getUserPaymentMethods(userId: number): Promise<PaymentMethod[]> {
+    return await db.select()
+      .from(paymentMethods)
+      .where(and(
+        eq(paymentMethods.userId, userId),
+        eq(paymentMethods.isActive, true)
+      ))
+      .orderBy(desc(paymentMethods.isDefault));
+  }
+
+  async createPaymentMethod(paymentMethod: InsertPaymentMethod): Promise<PaymentMethod> {
+    const [result] = await db.insert(paymentMethods).values(paymentMethod).returning();
+    return result;
+  }
+
+  async updatePaymentMethod(id: number, data: Partial<PaymentMethod>): Promise<PaymentMethod> {
+    const [result] = await db.update(paymentMethods)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(paymentMethods.id, id))
+      .returning();
+    return result;
+  }
+
+  async deletePaymentMethod(id: number): Promise<void> {
+    await db.update(paymentMethods)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(paymentMethods.id, id));
+  }
+
+  async setDefaultPaymentMethod(userId: number, paymentMethodId: number): Promise<void> {
+    // First, unset all default payment methods for the user
+    await db.update(paymentMethods)
+      .set({ isDefault: false, updatedAt: new Date() })
+      .where(eq(paymentMethods.userId, userId));
+    
+    // Then set the specified payment method as default
+    await db.update(paymentMethods)
+      .set({ isDefault: true, updatedAt: new Date() })
+      .where(eq(paymentMethods.id, paymentMethodId));
+  }
+
+  // Payment transaction operations
+  async getUserTransactions(userId: number, limit: number = 50, offset: number = 0): Promise<PaymentTransaction[]> {
+    return await db.select()
+      .from(paymentTransactions)
+      .where(eq(paymentTransactions.userId, userId))
+      .orderBy(desc(paymentTransactions.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async createTransaction(transaction: InsertPaymentTransaction): Promise<PaymentTransaction> {
+    const [result] = await db.insert(paymentTransactions).values(transaction).returning();
+    return result;
+  }
+
+  async updateTransaction(id: number, data: Partial<PaymentTransaction>): Promise<PaymentTransaction> {
+    const [result] = await db.update(paymentTransactions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(paymentTransactions.id, id))
+      .returning();
+    return result;
+  }
+
+  // Usage analytics operations
+  async getUserUsageAnalytics(userId: number, feature?: string): Promise<UsageAnalytics[]> {
+    const conditions = [eq(usageAnalytics.userId, userId)];
+    if (feature) {
+      conditions.push(eq(usageAnalytics.feature, feature));
+    }
+    
+    return await db.select()
+      .from(usageAnalytics)
+      .where(and(...conditions))
+      .orderBy(desc(usageAnalytics.recordedAt));
+  }
+
+  async createUsageAnalytics(analytics: InsertUsageAnalytics): Promise<UsageAnalytics> {
+    const [result] = await db.insert(usageAnalytics).values(analytics).returning();
+    return result;
+  }
+
+  async getUsageStatsByUser(userId: number): Promise<{ feature: string; totalValue: number }[]> {
+    const result = await db.select({
+      feature: usageAnalytics.feature,
+      totalValue: usageAnalytics.value,
+    })
+    .from(usageAnalytics)
+    .where(eq(usageAnalytics.userId, userId));
+
+    // Group by feature and sum values
+    const stats = result.reduce((acc, curr) => {
+      if (!acc[curr.feature]) {
+        acc[curr.feature] = 0;
+      }
+      acc[curr.feature] += curr.totalValue;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(stats).map(([feature, totalValue]) => ({
+      feature,
+      totalValue
+    }));
   }
 }
 

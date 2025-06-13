@@ -1697,5 +1697,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Subscription management routes
+  app.get('/api/subscription/plans', async (req, res) => {
+    try {
+      const plans = await storage.getActiveSubscriptionPlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ error: "Failed to fetch subscription plans" });
+    }
+  });
+
+  app.get('/api/subscription/current', requireAuth, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const subscription = await storage.getUserSubscription(userId);
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error fetching user subscription:", error);
+      res.status(500).json({ error: "Failed to fetch subscription" });
+    }
+  });
+
+  app.post('/api/subscription/upgrade', requireAuth, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const { planId, paymentMethodId } = req.body;
+
+      // Create payment transaction
+      const transaction = await storage.createTransaction({
+        userId,
+        paymentMethodId,
+        providerTransactionId: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        amount: "29.99", // This should come from the plan
+        currency: "USD",
+        status: "completed",
+        type: "subscription",
+        description: "Subscription upgrade",
+        processedAt: new Date()
+      });
+
+      // Create or update subscription
+      const existingSubscription = await storage.getUserSubscription(userId);
+      
+      if (existingSubscription) {
+        await storage.updateUserSubscription(existingSubscription.id, {
+          planId,
+          status: "active",
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+        });
+      } else {
+        await storage.createUserSubscription({
+          userId,
+          planId,
+          status: "active",
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          autoRenew: true
+        });
+      }
+
+      // Record usage analytics
+      await storage.createUsageAnalytics({
+        userId,
+        feature: "subscription_upgrade",
+        value: 1,
+        metadata: { planId, transactionId: transaction.id }
+      });
+
+      res.json({ success: true, transactionId: transaction.id });
+    } catch (error) {
+      console.error("Error upgrading subscription:", error);
+      res.status(500).json({ error: "Failed to upgrade subscription" });
+    }
+  });
+
+  // Payment methods routes
+  app.get('/api/payment-methods', requireAuth, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const paymentMethods = await storage.getUserPaymentMethods(userId);
+      res.json(paymentMethods);
+    } catch (error) {
+      console.error("Error fetching payment methods:", error);
+      res.status(500).json({ error: "Failed to fetch payment methods" });
+    }
+  });
+
+  app.post('/api/payment-methods', requireAuth, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const { type, cardLast4, cardBrand, cardExpMonth, cardExpYear } = req.body;
+
+      const paymentMethod = await storage.createPaymentMethod({
+        userId,
+        type,
+        provider: "mock", // Replace with actual payment provider
+        providerPaymentMethodId: `pm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        cardLast4,
+        cardBrand,
+        cardExpMonth,
+        cardExpYear,
+        isDefault: false,
+        isActive: true
+      });
+
+      res.json(paymentMethod);
+    } catch (error) {
+      console.error("Error creating payment method:", error);
+      res.status(500).json({ error: "Failed to create payment method" });
+    }
+  });
+
+  app.put('/api/payment-methods/:id/default', requireAuth, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const paymentMethodId = parseInt(req.params.id);
+
+      await storage.setDefaultPaymentMethod(userId, paymentMethodId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error setting default payment method:", error);
+      res.status(500).json({ error: "Failed to set default payment method" });
+    }
+  });
+
+  // Billing history routes
+  app.get('/api/billing/history', requireAuth, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const { limit = 20, offset = 0 } = req.query;
+      
+      const transactions = await storage.getUserTransactions(
+        userId, 
+        parseInt(limit as string), 
+        parseInt(offset as string)
+      );
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching billing history:", error);
+      res.status(500).json({ error: "Failed to fetch billing history" });
+    }
+  });
+
+  // Usage analytics routes
+  app.get('/api/usage/analytics', requireAuth, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const { feature } = req.query;
+      
+      const analytics = await storage.getUserUsageAnalytics(userId, feature as string);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching usage analytics:", error);
+      res.status(500).json({ error: "Failed to fetch usage analytics" });
+    }
+  });
+
+  app.get('/api/usage/stats', requireAuth, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const stats = await storage.getUsageStatsByUser(userId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching usage stats:", error);
+      res.status(500).json({ error: "Failed to fetch usage stats" });
+    }
+  });
+
   return httpServer;
 }
