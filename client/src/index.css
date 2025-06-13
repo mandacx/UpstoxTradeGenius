@@ -101,6 +101,39 @@
   --trading-blue: hsl(207, 90%, 54%);
 }
 
+.system {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(222, 84%, 5%);
+  --muted: hsl(210, 40%, 96%);
+  --muted-foreground: hsl(215, 16%, 47%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(222, 84%, 5%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(222, 84%, 5%);
+  --border: hsl(214, 32%, 91%);
+  --input: hsl(214, 32%, 91%);
+  --primary: hsl(221, 83%, 53%);
+  --primary-foreground: hsl(210, 40%, 98%);
+  --secondary: hsl(210, 40%, 96%);
+  --secondary-foreground: hsl(222, 84%, 5%);
+  --accent: hsl(25, 95%, 53%);
+  --accent-foreground: hsl(210, 40%, 98%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(210, 40%, 98%);
+  --ring: hsl(221, 83%, 53%);
+  --radius: 0.5rem;
+  
+  /* Trading specific colors for system theme */
+  --trading-dark: hsl(0, 0%, 100%);
+  --trading-card: hsl(0, 0%, 98%);
+  --trading-border: hsl(214, 32%, 91%);
+  --trading-text-primary: hsl(222, 84%, 5%);
+  --trading-text-secondary: hsl(215, 16%, 47%);
+  --profit-green: hsl(142, 76%, 36%);
+  --loss-red: hsl(0, 84%, 60%);
+  --trading-blue: hsl(221, 83%, 53%);
+}
+
 @layer base {
   * {
     @apply border-border;

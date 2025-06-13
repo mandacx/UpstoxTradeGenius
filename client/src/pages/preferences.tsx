@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/theme-provider";
 import { Camera, User, Lock, Palette, Save, Upload } from "lucide-react";
 
 const profileUpdateSchema = z.object({
@@ -309,8 +309,8 @@ export default function PreferencesPage() {
                     onClick={() => setTheme("system")}
                     className="h-20 flex-col"
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-white to-gray-800 border rounded mb-2"></div>
-                    System
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-orange-500 border rounded mb-2"></div>
+                    Orange & Blue
                   </Button>
                 </div>
               </div>
