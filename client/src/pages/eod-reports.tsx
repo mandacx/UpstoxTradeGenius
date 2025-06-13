@@ -54,9 +54,13 @@ export default function EodReports() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>("asc");
   const { toast } = useToast();
 
-  // Fetch available symbols
+  // Fetch available symbols and expiry dates
   const { data: symbols } = useQuery<string[]>({
     queryKey: ["/api/eod-symbols"],
+  });
+
+  const { data: expiryDates } = useQuery<string[]>({
+    queryKey: ["/api/eod-expiry-dates"],
   });
 
   // Fetch EOD price reports with filters
@@ -74,6 +78,36 @@ export default function EodReports() {
       return response.json();
     },
   });
+
+  // Column sorting functionality
+  const handleSort = (field: keyof EodPriceReport) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Sort and filter data
+  const sortedData = eodData ? [...eodData].sort((a, b) => {
+    const aValue = String(a[sortField] || '');
+    const bValue = String(b[sortField] || '');
+    
+    // For numeric fields, parse as numbers
+    if (['cmp', 'cashChg', 'callOi', 'putOi', 'trendPrice1', 'trendPrice2'].includes(sortField)) {
+      const aNum = parseFloat(aValue) || 0;
+      const bNum = parseFloat(bValue) || 0;
+      return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+    }
+    
+    // For string fields, use string comparison
+    if (sortDirection === 'asc') {
+      return aValue.localeCompare(bValue);
+    } else {
+      return bValue.localeCompare(aValue);
+    }
+  }) : [];
 
   const handleSearch = () => {
     if (searchSymbol && symbols?.includes(searchSymbol.toUpperCase())) {
@@ -289,6 +323,23 @@ export default function EodReports() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="expiry-select">Expiry Date</Label>
+              <Select value={selectedExpiry} onValueChange={setSelectedExpiry}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All expiry dates..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Expiry Dates</SelectItem>
+                  {expiryDates?.map((expiry) => (
+                    <SelectItem key={expiry} value={expiry}>
+                      {new Date(expiry).toLocaleDateString()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="limit">Results Limit</Label>
               <Select value={limit} onValueChange={setLimit}>
                 <SelectTrigger>
@@ -325,30 +376,96 @@ export default function EodReports() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Symbol</TableHead>
-                    <TableHead>Trade Date</TableHead>
-                    <TableHead>Expiry Date</TableHead>
-                    <TableHead>Open</TableHead>
-                    <TableHead>High</TableHead>
-                    <TableHead>Low</TableHead>
-                    <TableHead>CMP</TableHead>
-                    <TableHead>Change</TableHead>
-                    <TableHead>Call OI</TableHead>
-                    <TableHead>Put OI</TableHead>
-                    <TableHead>Index Group</TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('symbol')} className="p-0 h-auto font-semibold">
+                        Symbol
+                        {sortField === 'symbol' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('tradeDate')} className="p-0 h-auto font-semibold">
+                        Trade Date
+                        {sortField === 'tradeDate' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('expiryDt')} className="p-0 h-auto font-semibold">
+                        Expiry Date
+                        {sortField === 'expiryDt' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('cmp')} className="p-0 h-auto font-semibold">
+                        CMP
+                        {sortField === 'cmp' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('cashChg')} className="p-0 h-auto font-semibold">
+                        Cash Change
+                        {sortField === 'cashChg' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('callOi')} className="p-0 h-auto font-semibold">
+                        Call OI
+                        {sortField === 'callOi' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('putOi')} className="p-0 h-auto font-semibold">
+                        Put OI
+                        {sortField === 'putOi' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('trendPrice1')} className="p-0 h-auto font-semibold">
+                        Trend Price 1
+                        {sortField === 'trendPrice1' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('trendPrice2')} className="p-0 h-auto font-semibold">
+                        Trend Price 2
+                        {sortField === 'trendPrice2' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('indxGrp')} className="p-0 h-auto font-semibold">
+                        Index Group
+                        {sortField === 'indxGrp' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {eodData.map((row, index) => (
+                  {sortedData.map((row, index) => (
                     <TableRow key={`${row.symbol}-${row.expiryDt}-${row.tradeDate}-${index}`}>
                       <TableCell className="font-medium">
                         <Badge variant="outline">{row.symbol}</Badge>
                       </TableCell>
                       <TableCell>{new Date(row.tradeDate).toLocaleDateString()}</TableCell>
                       <TableCell>{new Date(row.expiryDt).toLocaleDateString()}</TableCell>
-                      <TableCell>{formatCurrency(row.open)}</TableCell>
-                      <TableCell className="text-green-500">{formatCurrency(row.high)}</TableCell>
-                      <TableCell className="text-red-500">{formatCurrency(row.low)}</TableCell>
                       <TableCell className="font-medium">{formatCurrency(row.cmp)}</TableCell>
                       <TableCell className={getPriceChangeColor(row.cashChg)}>
                         <div className="flex items-center space-x-1">
@@ -358,6 +475,8 @@ export default function EodReports() {
                       </TableCell>
                       <TableCell>{formatNumber(row.callOi)}</TableCell>
                       <TableCell>{formatNumber(row.putOi)}</TableCell>
+                      <TableCell className="text-blue-600">{formatCurrency(row.trendPrice1)}</TableCell>
+                      <TableCell className="text-purple-600">{formatCurrency(row.trendPrice2)}</TableCell>
                       <TableCell>
                         {row.indxGrp && (
                           <Badge variant="secondary">{row.indxGrp}</Badge>

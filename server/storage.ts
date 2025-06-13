@@ -150,6 +150,7 @@ export interface IStorage {
   // EOD price report operations
   getEodPriceReport(symbol?: string, startDate?: string, endDate?: string, limit?: number): Promise<EodPriceReport[]>;
   getEodSymbols(): Promise<string[]>;
+  getEodExpiryDates(): Promise<string[]>;
   getEodPriceBySymbol(symbol: string, expiryDt: string, tradeDate: string): Promise<EodPriceReport | undefined>;
 }
 
