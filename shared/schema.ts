@@ -41,6 +41,25 @@ export const strategies = pgTable("strategies", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const exclusiveStrategies = pgTable("exclusive_strategies", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description").notNull(),
+  overview: text("overview"),
+  algorithm: text("algorithm").notNull(),
+  riskLevel: text("risk_level").notNull(), // low, medium, high
+  expectedReturn: decimal("expected_return", { precision: 8, scale: 4 }),
+  maxDrawdown: decimal("max_drawdown", { precision: 8, scale: 4 }),
+  timeframe: text("timeframe").notNull(), // 1m, 5m, 15m, 1h, 1d
+  assetClasses: jsonb("asset_classes").notNull().default([]), // ["equity", "derivatives", "forex"]
+  parameters: jsonb("parameters").default({}),
+  isActive: boolean("is_active").default(true),
+  isPremium: boolean("is_premium").default(false),
+  minimumCapital: decimal("minimum_capital", { precision: 15, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const positions = pgTable("positions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
@@ -409,6 +428,12 @@ export const insertConfigurationSchema = createInsertSchema(configurations).omit
   updatedAt: true,
 });
 
+export const insertExclusiveStrategySchema = createInsertSchema(exclusiveStrategies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
   id: true,
   createdAt: true,
@@ -499,6 +524,8 @@ export type Account = typeof accounts.$inferSelect;
 export type InsertAccount = z.infer<typeof insertAccountSchema>;
 export type Configuration = typeof configurations.$inferSelect;
 export type InsertConfiguration = z.infer<typeof insertConfigurationSchema>;
+export type ExclusiveStrategy = typeof exclusiveStrategies.$inferSelect;
+export type InsertExclusiveStrategy = z.infer<typeof insertExclusiveStrategySchema>;
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
 export type UserSubscription = typeof userSubscriptions.$inferSelect;
