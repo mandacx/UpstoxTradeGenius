@@ -1147,9 +1147,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upstox account linking endpoints
-  app.get("/api/upstox/auth-url", requireAuth, async (req, res) => {
+  app.get("/api/upstox/auth-url", requireAuthFlexible, async (req: any, res) => {
     try {
-      const userId = req.session.userId!;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
       const user = await storage.getUser(userId);
       
       if (!user?.upstoxClientId || !user?.upstoxRedirectUri) {
@@ -1320,9 +1324,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/upstox/config", requireAuth, async (req, res) => {
+  app.get("/api/upstox/config", requireAuthFlexible, async (req: any, res) => {
     try {
-      const userId = req.session.userId!;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -1341,9 +1349,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/upstox/update-config", requireAuth, async (req, res) => {
+  app.post("/api/upstox/update-config", requireAuthFlexible, async (req: any, res) => {
     try {
-      const userId = req.session.userId!;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
       const { clientId, clientSecret, redirectUri } = req.body;
       
       if (!clientId || !redirectUri) {
