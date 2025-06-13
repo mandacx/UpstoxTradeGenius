@@ -22,9 +22,16 @@ export default function Backtesting() {
   const [editFormData, setEditFormData] = useState<any>({});
   const { toast } = useToast();
 
-  const { data: backtests = [], isLoading } = useQuery<any[]>({
+  const { data: backtests = [], isLoading, error } = useQuery<any[]>({
     queryKey: ["/api/backtests"],
-    refetchInterval: 2000, // Refetch every 2 seconds for progress updates
+    refetchInterval: error ? false : 2000, // Stop refetching on error
+    retry: (failureCount, error: any) => {
+      // Don't retry if it's an authentication error
+      if (error?.message?.includes('401') || error?.message?.includes('Unauthorized')) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 
   const { data: strategies = [] } = useQuery<any[]>({
@@ -229,6 +236,32 @@ export default function Backtesting() {
             <div key={i} className="h-32 bg-trading-card rounded-lg"></div>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <Card className="bg-trading-card border-red-600">
+          <CardHeader>
+            <CardTitle className="text-red-400 flex items-center gap-2">
+              <StopCircleIcon className="h-5 w-5" />
+              Authentication Required
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-trading-text-secondary mb-4">
+              Please log in to access your backtesting data. Your trading tests and results are protected and only visible to you.
+            </p>
+            <Button 
+              onClick={() => window.location.href = '/login'} 
+              className="bg-primary hover:bg-primary/90"
+            >
+              Go to Login
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
