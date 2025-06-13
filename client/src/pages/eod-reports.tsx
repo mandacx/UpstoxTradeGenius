@@ -105,7 +105,7 @@ export default function EodReports() {
     const bValue = String(b[sortField] || '');
     
     // For numeric fields, parse as numbers
-    if (['cmp', 'cashChg', 'callOi', 'putOi', 'trendPrice1', 'trendPrice2', 'putLow', 'putInt', 'combInt', 'callInt', 'callHigh', 'callLow', 'putHigh', 'unusedPc', 'unusedPcRev', 'callDiff', 'putDiff', 'combDiff'].includes(sortField)) {
+    if (['open', 'high', 'low', 'cmp', 'cashChg', 'callOi', 'putOi', 'trendPrice1', 'trendPrice2', 'putLow', 'putInt', 'combInt', 'callInt', 'callHigh', 'callLow', 'putHigh', 'unusedPc', 'unusedPcRev', 'callDiff', 'putDiff', 'combDiff'].includes(sortField)) {
       const aNum = parseFloat(aValue) || 0;
       const bNum = parseFloat(bValue) || 0;
       return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
@@ -144,10 +144,10 @@ export default function EodReports() {
 
     const csvContent = [
       // CSV header
-      "Symbol,Expiry Date,Trade Date,Open,High,Low,CMP,Cash Change,Index Group,Index Weight,Put Interest,Call Interest,Combined Interest,Call OI,Put OI,Trend Price 1,Trend Price 2",
+      "Symbol,Trade Date,Expiry Date,Open,High,Low,Close,Change,Level 1,Level 2,Level 3,Level 4,Level 5,Level 6,Level 7,UPC,UPCR,Call OI,Put OI,Trend Price 1,Trend Price 2,CALL Level,PUT Level,COMB Level,Index Group",
       // CSV data
       ...eodData.map(row => 
-        `${row.symbol},${row.expiryDt},${row.tradeDate},${row.open},${row.high},${row.low},${row.cmp},${row.cashChg},${row.indxGrp},${row.indxWtg},${row.putInt},${row.callInt},${row.combInt},${row.callOi},${row.putOi},${row.trendPrice1},${row.trendPrice2}`
+        `${row.symbol},${row.tradeDate},${row.expiryDt},${row.open},${row.high},${row.low},${row.cmp},${row.cashChg},${row.putLow},${row.putInt},${row.combInt},${row.callInt},${row.callHigh},${row.callLow},${row.putHigh},${row.unusedPc},${row.unusedPcRev},${row.callOi},${row.putOi},${row.trendPrice1},${row.trendPrice2},${row.callDiff},${row.putDiff},${row.combDiff},${row.indxGrp}`
       )
     ].join("\n");
 
@@ -410,6 +410,46 @@ export default function EodReports() {
                         )}
                       </Button>
                     </TableHead>
+                    <TableHead className="bg-blue-50 dark:bg-blue-900/20">
+                      <Button variant="ghost" onClick={() => handleSort('open')} className="p-0 h-auto font-semibold text-blue-700 dark:text-blue-300">
+                        Open
+                        {sortField === 'open' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="bg-green-50 dark:bg-green-900/20">
+                      <Button variant="ghost" onClick={() => handleSort('high')} className="p-0 h-auto font-semibold text-green-700 dark:text-green-300">
+                        High
+                        {sortField === 'high' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="bg-red-50 dark:bg-red-900/20">
+                      <Button variant="ghost" onClick={() => handleSort('low')} className="p-0 h-auto font-semibold text-red-700 dark:text-red-300">
+                        Low
+                        {sortField === 'low' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="bg-purple-50 dark:bg-purple-900/20">
+                      <Button variant="ghost" onClick={() => handleSort('cmp')} className="p-0 h-auto font-semibold text-purple-700 dark:text-purple-300">
+                        Close (CMP)
+                        {sortField === 'cmp' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('cashChg')} className="p-0 h-auto font-semibold">
+                        Change
+                        {sortField === 'cashChg' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
                     <TableHead>
                       <Button variant="ghost" onClick={() => handleSort('putLow')} className="p-0 h-auto font-semibold">
                         Level 1
@@ -556,6 +596,14 @@ export default function EodReports() {
                       </TableCell>
                       <TableCell>{new Date(row.tradeDate).toLocaleDateString()}</TableCell>
                       <TableCell>{new Date(row.expiryDt).toLocaleDateString()}</TableCell>
+                      <TableCell className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-semibold">{formatCurrency(row.open)}</TableCell>
+                      <TableCell className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 font-semibold">{formatCurrency(row.high)}</TableCell>
+                      <TableCell className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 font-semibold">{formatCurrency(row.low)}</TableCell>
+                      <TableCell className="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 font-semibold">{formatCurrency(row.cmp)}</TableCell>
+                      <TableCell className={`font-medium flex items-center ${getPriceChangeColor(row.cashChg)}`}>
+                        {getPriceChangeIcon(row.cashChg)}
+                        <span className="ml-1">{formatCurrency(row.cashChg)}</span>
+                      </TableCell>
                       <TableCell className="text-red-600">{formatCurrency(row.putLow)}</TableCell>
                       <TableCell className="text-orange-600">{formatCurrency(row.putInt)}</TableCell>
                       <TableCell className="text-yellow-600">{formatCurrency(row.combInt)}</TableCell>

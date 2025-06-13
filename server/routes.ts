@@ -771,9 +771,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // EOD Price Report endpoints
   app.get("/api/eod-price-report", async (req, res) => {
     try {
-      const { symbol, startDate, endDate, limit } = req.query;
+      const { symbol, expiryDt, startDate, endDate, limit } = req.query;
       const data = await storage.getEodPriceReport(
         symbol as string,
+        expiryDt as string,
         startDate as string,
         endDate as string,
         limit ? parseInt(limit as string) : undefined

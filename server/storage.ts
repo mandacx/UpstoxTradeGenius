@@ -745,12 +745,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // EOD price report operations
-  async getEodPriceReport(symbol?: string, startDate?: string, endDate?: string, limit: number = 100): Promise<EodPriceReport[]> {
+  async getEodPriceReport(symbol?: string, expiryDt?: string, startDate?: string, endDate?: string, limit: number = 100): Promise<EodPriceReport[]> {
     let query = db.select().from(eodPriceReport);
     
     const conditions = [];
     if (symbol) {
       conditions.push(eq(eodPriceReport.symbol, symbol));
+    }
+    if (expiryDt) {
+      conditions.push(eq(eodPriceReport.expiryDt, expiryDt));
     }
     if (startDate) {
       conditions.push(gte(eodPriceReport.tradeDate, startDate));
