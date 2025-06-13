@@ -1189,9 +1189,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.redirect("/?upstox=error&reason=no_code");
       }
 
-      // For now, use hardcoded user ID since state might not be working
-      const userId = 1;
+      // Extract user ID from state parameter
+      let userId;
+      if (state && typeof state === 'string' && state.startsWith('user_')) {
+        userId = parseInt(state.replace('user_', ''));
+      }
+      
+      if (!userId) {
+        console.error("Invalid or missing state parameter:", state);
+        return res.redirect("/?upstox=error&reason=invalid_state");
+      }
+      
       console.log("Processing callback for user:", userId);
+
+      // Get user configuration for Upstox service
+      const user = await storage.getUser(userId);
+      if (!user?.upstoxClientId || !user?.upstoxClientSecret) {
+        console.error("User configuration missing for user:", userId);
+        return res.redirect("/?upstox=error&reason=config_missing");
+      }
+
+      // Update the service with user-specific config for token exchange
+      upstoxService.updateConfig({
+        clientId: user.upstoxClientId,
+        clientSecret: user.upstoxClientSecret,
+        redirectUri: user.upstoxRedirectUri
+      });
 
       // Exchange code for access token
       console.log("Exchanging authorization code for access token...");
