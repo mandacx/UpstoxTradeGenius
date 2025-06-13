@@ -1804,7 +1804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin routes
   app.get("/api/admin/stats", requireAuthFlexible, async (req, res) => {
     try {
-      const user = (req as any).authUser || await storage.getUser(req.session.userId!);
+      const user = (req as any).user || await storage.getUser(req.session.userId!);
       
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ error: "Admin access required" });
@@ -1859,7 +1859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/admin/users", requireAuthFlexible, async (req, res) => {
     try {
-      const user = (req as any).authUser || await storage.getUser(req.session.userId!);
+      const user = (req as any).user || await storage.getUser(req.session.userId!);
       
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ error: "Admin access required" });
@@ -1889,7 +1889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/admin/users/:id", requireAuthFlexible, async (req, res) => {
     try {
-      const user = (req as any).authUser || await storage.getUser(req.session.userId!);
+      const user = (req as any).user || await storage.getUser(req.session.userId!);
       
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ error: "Admin access required" });
@@ -1908,7 +1908,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/admin/revenue", requireAuthFlexible, async (req, res) => {
     try {
-      const user = (req as any).authUser || await storage.getUser(req.session.userId!);
+      const user = (req as any).user || await storage.getUser(req.session.userId!);
       
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ error: "Admin access required" });
