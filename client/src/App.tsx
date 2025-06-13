@@ -19,7 +19,7 @@ import Logs from "@/pages/logs";
 import Account from "@/pages/account";
 import Preferences from "@/pages/preferences";
 import Admin from "@/pages/admin";
-import Subscription from "@/pages/subscription";
+import Subscription from "@/pages/subscription-enhanced";
 import Analytics from "@/pages/analytics";
 import Sidebar from "@/components/sidebar";
 import Topbar from "@/components/topbar";

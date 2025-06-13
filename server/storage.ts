@@ -78,6 +78,7 @@ export interface IStorage {
   // Subscription operations
   getSubscriptionPlans(): Promise<SubscriptionPlan[]>;
   getActiveSubscriptionPlans(): Promise<SubscriptionPlan[]>;
+  createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan>;
   getUserSubscription(userId: number): Promise<UserSubscription | undefined>;
   createUserSubscription(subscription: InsertUserSubscription): Promise<UserSubscription>;
   updateUserSubscription(id: number, data: Partial<UserSubscription>): Promise<UserSubscription>;
@@ -383,6 +384,11 @@ export class DatabaseStorage implements IStorage {
 
   async getActiveSubscriptionPlans(): Promise<SubscriptionPlan[]> {
     return await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.isActive, true));
+  }
+
+  async createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
+    const [result] = await db.insert(subscriptionPlans).values(plan).returning();
+    return result;
   }
 
   async getUserSubscription(userId: number): Promise<UserSubscription | undefined> {

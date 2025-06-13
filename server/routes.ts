@@ -1700,7 +1700,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Subscription management routes
   app.get('/api/subscription/plans', async (req, res) => {
     try {
-      const plans = await storage.getActiveSubscriptionPlans();
+      let plans = await storage.getActiveSubscriptionPlans();
+      
+      // If no plans exist in database, create default plans
+      if (plans.length === 0) {
+        const defaultPlans = [
+          {
+            name: "Free",
+            description: "Basic features for getting started",
+            price: "0.00",
+            currency: "USD",
+            billingCycle: "forever",
+            features: ["5 trading strategies", "10 backtests per month", "Basic analytics", "Community support"],
+            isActive: true
+          },
+          {
+            name: "Pro",
+            description: "Advanced features for serious traders",
+            price: "29.99",
+            currency: "USD",
+            billingCycle: "monthly",
+            features: ["25 trading strategies", "100 backtests per month", "Advanced analytics", "Priority support", "API access (10,000 calls/month)", "Real-time alerts"],
+            isActive: true
+          },
+          {
+            name: "Enterprise",
+            description: "Unlimited features for professional traders",
+            price: "99.99",
+            currency: "USD",
+            billingCycle: "monthly",
+            features: ["Unlimited strategies", "Unlimited backtests", "Premium analytics", "24/7 dedicated support", "API access (100,000 calls/month)", "Custom integrations", "White-label options"],
+            isActive: true
+          }
+        ];
+
+        // Create default plans
+        for (const planData of defaultPlans) {
+          await storage.createSubscriptionPlan(planData);
+        }
+
+        plans = await storage.getActiveSubscriptionPlans();
+      }
+      
       res.json(plans);
     } catch (error) {
       console.error("Error fetching subscription plans:", error);
@@ -1708,7 +1749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/subscription/current', requireAuth, async (req, res) => {
+  app.get('/api/subscription/current', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user?.id;
       const subscription = await storage.getUserSubscription(userId);

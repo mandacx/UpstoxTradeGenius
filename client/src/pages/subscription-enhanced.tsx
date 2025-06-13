@@ -63,7 +63,7 @@ interface UsageStats {
   totalValue: number;
 }
 
-export default function SubscriptionEnhanced() {
+export default function Subscription() {
   const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showAddPaymentDialog, setShowAddPaymentDialog] = useState(false);
