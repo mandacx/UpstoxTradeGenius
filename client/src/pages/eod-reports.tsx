@@ -34,13 +34,22 @@ interface EodPriceReport {
   cashChg: string;
   indxGrp: string;
   indxWtg: string;
-  putInt: string;
-  callInt: string;
-  combInt: string;
+  putLow: string; // level_1
+  putInt: string; // level_2
+  combInt: string; // level_3
+  callInt: string; // level_4
+  callHigh: string; // level_5
+  callLow: string; // level_6
+  putHigh: string; // level_7
+  unusedPc: string; // UPC
+  unusedPcRev: string; // UPCR
   callOi: number;
   putOi: number;
   trendPrice1: string;
   trendPrice2: string;
+  callDiff: string; // CALL_Level
+  putDiff: string; // PUT_LEVEL
+  combDiff: string; // COMB_LEVEL
 }
 
 export default function EodReports() {
@@ -95,7 +104,7 @@ export default function EodReports() {
     const bValue = String(b[sortField] || '');
     
     // For numeric fields, parse as numbers
-    if (['cmp', 'cashChg', 'callOi', 'putOi', 'trendPrice1', 'trendPrice2'].includes(sortField)) {
+    if (['cmp', 'cashChg', 'callOi', 'putOi', 'trendPrice1', 'trendPrice2', 'putLow', 'putInt', 'combInt', 'callInt', 'callHigh', 'callLow', 'putHigh', 'unusedPc', 'unusedPcRev', 'callDiff', 'putDiff', 'combDiff'].includes(sortField)) {
       const aNum = parseFloat(aValue) || 0;
       const bNum = parseFloat(bValue) || 0;
       return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
@@ -401,17 +410,73 @@ export default function EodReports() {
                       </Button>
                     </TableHead>
                     <TableHead>
-                      <Button variant="ghost" onClick={() => handleSort('cmp')} className="p-0 h-auto font-semibold">
-                        CMP
-                        {sortField === 'cmp' && (
+                      <Button variant="ghost" onClick={() => handleSort('putLow')} className="p-0 h-auto font-semibold">
+                        Level 1
+                        {sortField === 'putLow' && (
                           sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
                         )}
                       </Button>
                     </TableHead>
                     <TableHead>
-                      <Button variant="ghost" onClick={() => handleSort('cashChg')} className="p-0 h-auto font-semibold">
-                        Cash Change
-                        {sortField === 'cashChg' && (
+                      <Button variant="ghost" onClick={() => handleSort('putInt')} className="p-0 h-auto font-semibold">
+                        Level 2
+                        {sortField === 'putInt' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('combInt')} className="p-0 h-auto font-semibold">
+                        Level 3
+                        {sortField === 'combInt' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('callInt')} className="p-0 h-auto font-semibold">
+                        Level 4
+                        {sortField === 'callInt' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('callHigh')} className="p-0 h-auto font-semibold">
+                        Level 5
+                        {sortField === 'callHigh' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('callLow')} className="p-0 h-auto font-semibold">
+                        Level 6
+                        {sortField === 'callLow' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('putHigh')} className="p-0 h-auto font-semibold">
+                        Level 7
+                        {sortField === 'putHigh' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('unusedPc')} className="p-0 h-auto font-semibold">
+                        UPC
+                        {sortField === 'unusedPc' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('unusedPcRev')} className="p-0 h-auto font-semibold">
+                        UPCR
+                        {sortField === 'unusedPcRev' && (
                           sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
                         )}
                       </Button>
@@ -449,6 +514,30 @@ export default function EodReports() {
                       </Button>
                     </TableHead>
                     <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('callDiff')} className="p-0 h-auto font-semibold">
+                        CALL Level
+                        {sortField === 'callDiff' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('putDiff')} className="p-0 h-auto font-semibold">
+                        PUT Level
+                        {sortField === 'putDiff' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('combDiff')} className="p-0 h-auto font-semibold">
+                        COMB Level
+                        {sortField === 'combDiff' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
                       <Button variant="ghost" onClick={() => handleSort('indxGrp')} className="p-0 h-auto font-semibold">
                         Index Group
                         {sortField === 'indxGrp' && (
@@ -466,17 +555,22 @@ export default function EodReports() {
                       </TableCell>
                       <TableCell>{new Date(row.tradeDate).toLocaleDateString()}</TableCell>
                       <TableCell>{new Date(row.expiryDt).toLocaleDateString()}</TableCell>
-                      <TableCell className="font-medium">{formatCurrency(row.cmp)}</TableCell>
-                      <TableCell className={getPriceChangeColor(row.cashChg)}>
-                        <div className="flex items-center space-x-1">
-                          {getPriceChangeIcon(row.cashChg)}
-                          <span>{formatCurrency(row.cashChg)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{formatNumber(row.callOi)}</TableCell>
-                      <TableCell>{formatNumber(row.putOi)}</TableCell>
-                      <TableCell className="text-blue-600">{formatCurrency(row.trendPrice1)}</TableCell>
-                      <TableCell className="text-purple-600">{formatCurrency(row.trendPrice2)}</TableCell>
+                      <TableCell className="text-red-600">{formatCurrency(row.putLow)}</TableCell>
+                      <TableCell className="text-orange-600">{formatCurrency(row.putInt)}</TableCell>
+                      <TableCell className="text-yellow-600">{formatCurrency(row.combInt)}</TableCell>
+                      <TableCell className="text-green-600">{formatCurrency(row.callInt)}</TableCell>
+                      <TableCell className="text-blue-600">{formatCurrency(row.callHigh)}</TableCell>
+                      <TableCell className="text-indigo-600">{formatCurrency(row.callLow)}</TableCell>
+                      <TableCell className="text-purple-600">{formatCurrency(row.putHigh)}</TableCell>
+                      <TableCell className="text-pink-600">{formatCurrency(row.unusedPc)}</TableCell>
+                      <TableCell className="text-cyan-600">{formatCurrency(row.unusedPcRev)}</TableCell>
+                      <TableCell className="font-medium">{formatNumber(row.callOi)}</TableCell>
+                      <TableCell className="font-medium">{formatNumber(row.putOi)}</TableCell>
+                      <TableCell className="text-blue-500 font-semibold">{formatCurrency(row.trendPrice1)}</TableCell>
+                      <TableCell className="text-purple-500 font-semibold">{formatCurrency(row.trendPrice2)}</TableCell>
+                      <TableCell className="text-emerald-600">{formatCurrency(row.callDiff)}</TableCell>
+                      <TableCell className="text-rose-600">{formatCurrency(row.putDiff)}</TableCell>
+                      <TableCell className="text-amber-600">{formatCurrency(row.combDiff)}</TableCell>
                       <TableCell>
                         {row.indxGrp && (
                           <Badge variant="secondary">{row.indxGrp}</Badge>
