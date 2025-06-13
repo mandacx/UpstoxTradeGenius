@@ -15,7 +15,8 @@ import {
   CrownIcon,
   PieChartIcon,
   GraduationCapIcon,
-  StarIcon
+  StarIcon,
+  FileTextIcon
 } from "lucide-react";
 
 const navigation = [
@@ -25,6 +26,7 @@ const navigation = [
   { name: "AI Strategies", href: "/strategies", icon: Bot },
   { name: "Exclusive Strategies", href: "/exclusive-strategies", icon: StarIcon },
   { name: "Backtesting", href: "/backtesting", icon: BarChart3Icon },
+  { name: "EOD Reports", href: "/eod-reports", icon: FileTextIcon },
   { name: "Trading Academy", href: "/learn", icon: GraduationCapIcon },
   { name: "Analytics", href: "/analytics", icon: PieChartIcon },
   { name: "Account", href: "/account", icon: UserIcon },
