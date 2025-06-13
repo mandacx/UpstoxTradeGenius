@@ -22,15 +22,9 @@ export default function Backtesting() {
   const [editFormData, setEditFormData] = useState<any>({});
   const { toast } = useToast();
 
-  const backtestQuery = useQuery<any[]>({
+  const { data: backtests = [], isLoading, error } = useQuery<any[]>({
     queryKey: ["/api/backtests"],
-    refetchInterval: (data, query) => {
-      // Stop refetching if there's an error
-      if (query.state.error) {
-        return false;
-      }
-      return 5000; // Refetch every 5 seconds for progress updates
-    },
+    refetchInterval: 5000, // Refetch every 5 seconds for progress updates
     retry: (failureCount, error: any) => {
       // Don't retry if it's an authentication error
       if (error?.message?.includes('401') || error?.message?.includes('Unauthorized')) {
@@ -39,8 +33,6 @@ export default function Backtesting() {
       return failureCount < 3;
     },
   });
-
-  const { data: backtests = [], isLoading, error } = backtestQuery;
 
   const { data: strategies = [] } = useQuery<any[]>({
     queryKey: ["/api/strategies"],
