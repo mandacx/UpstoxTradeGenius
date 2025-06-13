@@ -1448,7 +1448,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Account status check - User:", { 
         id: user?.id, 
-        isUpstoxLinked: user?.isUpstoxLinked 
+        isUpstoxLinked: user?.isUpstoxLinked,
+        hasClientId: !!user?.upstoxClientId,
+        hasClientSecret: !!user?.upstoxClientSecret
       });
       console.log("Account status check - Account:", { 
         id: account?.id,
@@ -1461,11 +1463,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
+      // Check if we have the minimum required configuration
+      const hasCredentials = !!(user.upstoxClientId && user.upstoxClientSecret);
+      const hasValidTokens = !!(account?.upstoxAccessToken && account?.upstoxUserId);
+      const tokenExpired = account?.upstoxTokenExpiry ? new Date() > account.upstoxTokenExpiry : true;
+      
+      // Only consider it "linked" if we have both credentials AND valid tokens
+      const isActuallyLinked = hasCredentials && hasValidTokens && !tokenExpired;
+
       const response = {
-        isLinked: user.isUpstoxLinked || false,
+        isLinked: isActuallyLinked,
+        hasCredentials,
+        hasValidTokens,
         upstoxUserId: account?.upstoxUserId,
         tokenExpiry: account?.upstoxTokenExpiry,
-        needsRefresh: account?.upstoxTokenExpiry ? new Date() > account.upstoxTokenExpiry : false
+        needsRefresh: tokenExpired && hasValidTokens
       };
       
       console.log("Returning account status:", response);

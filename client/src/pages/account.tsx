@@ -12,6 +12,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface UpstoxStatus {
   isLinked: boolean;
+  hasCredentials: boolean;
+  hasValidTokens: boolean;
   upstoxUserId?: string;
   tokenExpiry?: string;
   needsRefresh: boolean;
@@ -338,14 +340,19 @@ export default function Account() {
             <CardTitle className="flex items-center gap-2">
               Upstox Configuration
               {upstoxStatus?.isLinked ? (
-                <Badge className="bg-green-100 text-green-800">
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
                   Connected
+                </Badge>
+              ) : upstoxStatus?.hasCredentials ? (
+                <Badge variant="secondary">
+                  <AlertCircle className="w-3 h-3 mr-1" />
+                  Configured - Not Linked
                 </Badge>
               ) : (
                 <Badge variant="outline">
                   <AlertCircle className="w-3 h-3 mr-1" />
-                  Not Connected
+                  Not Configured
                 </Badge>
               )}
             </CardTitle>
@@ -355,12 +362,36 @@ export default function Account() {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Configuration Status Alert */}
-            {(!savedConfig?.clientId || !savedConfig?.hasClientSecret) && (
-              <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+            {!upstoxStatus?.isLinked && (
+              <Alert className={
+                !upstoxStatus?.hasCredentials 
+                  ? "border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950"
+                  : upstoxStatus?.hasValidTokens 
+                    ? "border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950"
+                    : "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
+              }>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Setup Required:</strong> Configure your Upstox API credentials below to enable trading features. 
-                  You'll need to create an app in your Upstox Developer Console first.
+                  {!upstoxStatus?.hasCredentials ? (
+                    <>
+                      <strong>Setup Required:</strong> Configure your Upstox API credentials below to enable trading features. 
+                      You'll need to create an app in your Upstox Developer Console first.
+                    </>
+                  ) : !upstoxStatus?.hasValidTokens ? (
+                    <>
+                      <strong>Authentication Required:</strong> Your Upstox API credentials are configured but you need to 
+                      link your account to enable live trading features.
+                    </>
+                  ) : upstoxStatus?.needsRefresh ? (
+                    <>
+                      <strong>Token Expired:</strong> Your Upstox access token has expired. Please re-authenticate to 
+                      continue using live trading features.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Almost Ready:</strong> Credentials configured, please complete the linking process.
+                    </>
+                  )}
                 </AlertDescription>
               </Alert>
             )}
