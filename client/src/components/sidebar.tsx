@@ -77,46 +77,35 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const isAdmin = (user as any)?.role === 'admin';
 
   return (
-    <aside className={cn(
-      "bg-card border-r border-border flex-shrink-0 transition-all duration-300",
-      isCollapsed ? "w-16" : "w-64"
-    )}>
-      {/* Header with Logo and Toggle */}
-      <div className="p-6 border-b border-border">
-        <div className="flex items-center justify-between">
-          {!isCollapsed && (
-            <div className="flex items-center space-x-3">
+    <div className="relative">
+      <aside className={cn(
+        "bg-card border-r border-border flex-shrink-0 transition-all duration-300",
+        isCollapsed ? "w-16" : "w-64"
+      )}>
+        {/* Header with Logo */}
+        <div className="p-6 border-b border-border">
+          <div className="flex items-center justify-center">
+            {!isCollapsed && (
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                  <TrendingUpIcon className="w-5 h-5 text-primary-foreground" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-foreground">TradingPro AI</h1>
+                  <p className="text-xs text-muted-foreground">Trading Dashboard</p>
+                </div>
+              </div>
+            )}
+            {isCollapsed && (
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <TrendingUpIcon className="w-5 h-5 text-primary-foreground" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-foreground">TradingPro AI</h1>
-                <p className="text-xs text-muted-foreground">Trading Dashboard</p>
-              </div>
-            </div>
-          )}
-          {isCollapsed && (
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto">
-              <TrendingUpIcon className="w-5 h-5 text-primary-foreground" />
-            </div>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggle}
-            className="h-8 w-8"
-          >
-            {isCollapsed ? (
-              <ChevronRightIcon className="h-4 w-4" />
-            ) : (
-              <ChevronLeftIcon className="h-4 w-4" />
             )}
-          </Button>
+          </div>
         </div>
-      </div>
-      
-      {/* Navigation */}
-      <nav className="p-4 space-y-2">
+        
+        {/* Navigation */}
+        <nav className="p-4 space-y-2">
         {navigation.map((item) => {
           const isActive = location === item.href || (item.href === "/dashboard" && location === "/");
           
@@ -164,5 +153,23 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         </div>
       </div>
     </aside>
+
+    {/* Full Height Toggle Button */}
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={onToggle}
+      className={cn(
+        "absolute top-1/2 -translate-y-1/2 h-8 w-8 z-10 bg-card border border-border shadow-sm hover:bg-accent",
+        isCollapsed ? "-right-4" : "-right-4"
+      )}
+    >
+      {isCollapsed ? (
+        <ChevronRightIcon className="h-4 w-4" />
+      ) : (
+        <ChevronLeftIcon className="h-4 w-4" />
+      )}
+    </Button>
+  </div>
   );
 }

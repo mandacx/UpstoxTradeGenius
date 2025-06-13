@@ -39,22 +39,34 @@ export default function AIStrategyBuilder() {
 
   const generateStrategyMutation = useMutation({
     mutationFn: async (prompt: string) => {
-      const response = await apiRequest("POST", "/api/strategies/generate", { prompt });
-      return response.json();
+      // First generate the strategy
+      const generateResponse = await apiRequest("POST", "/api/strategies/generate", { prompt });
+      const generatedStrategy = await generateResponse.json();
+      
+      // Then automatically save it to the database
+      const saveResponse = await apiRequest("POST", "/api/strategies", {
+        name: generatedStrategy.name,
+        description: generatedStrategy.description,
+        code: generatedStrategy.code,
+        parameters: generatedStrategy.parameters,
+        isActive: true
+      });
+      
+      return await saveResponse.json();
     },
     onSuccess: (data) => {
       // Invalidate strategies cache to refresh the data
       queryClient.invalidateQueries({ queryKey: ["/api/strategies"] });
       toast({
-        title: "Strategy Generated!",
-        description: "Your AI strategy has been generated. Review it in the strategies section.",
+        title: "Strategy Created!",
+        description: `"${data.name}" has been generated and saved successfully.`,
       });
       setPrompt("");
     },
     onError: (error: any) => {
       toast({
         title: "Generation Failed",
-        description: error.message || "Failed to generate strategy",
+        description: error.message || "Failed to generate and save strategy",
         variant: "destructive",
       });
     },
