@@ -756,9 +756,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Backtesting endpoints
-  app.get("/api/backtests", async (req, res) => {
+  app.get("/api/backtests", requireAuthFlexible, async (req: any, res) => {
     try {
-      const userId = 1; // In real app, get from session
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
       const backtests = await storage.getBacktests(userId);
       res.json(backtests);
     } catch (error) {
@@ -767,9 +771,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/backtests", async (req, res) => {
+  app.post("/api/backtests", requireAuthFlexible, async (req: any, res) => {
     try {
-      const userId = 1; // In real app, get from session
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
       const validatedData = insertBacktestSchema.parse({
         ...req.body,
         userId,
@@ -794,13 +802,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/backtests/:id", async (req, res) => {
+  app.get("/api/backtests/:id", requireAuthFlexible, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
       const backtest = await storage.getBacktest(Number(id));
       if (!backtest) {
         return res.status(404).json({ error: "Backtest not found" });
       }
+      
+      // Ensure user can only access their own backtests
+      if (backtest.userId !== userId) {
+        return res.status(403).json({ error: "Access denied to this backtest" });
+      }
+      
       res.json(backtest);
     } catch (error) {
       console.error("Error fetching backtest:", error);
@@ -809,9 +828,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Cancel backtest endpoint
-  app.post("/api/backtests/:id/cancel", async (req, res) => {
+  app.post("/api/backtests/:id/cancel", requireAuthFlexible, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
+      const backtest = await storage.getBacktest(Number(id));
+      if (!backtest) {
+        return res.status(404).json({ error: "Backtest not found" });
+      }
+      
+      // Ensure user can only cancel their own backtests
+      if (backtest.userId !== userId) {
+        return res.status(403).json({ error: "Access denied to this backtest" });
+      }
+      
       await cancelBacktest(Number(id));
       res.json({ message: "Backtest cancelled successfully" });
     } catch (error) {
@@ -821,10 +855,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete backtest endpoint
-  app.delete("/api/backtests/:id", async (req, res) => {
+  app.delete("/api/backtests/:id", requireAuthFlexible, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
       const backtestId = Number(id);
+      const backtest = await storage.getBacktest(backtestId);
+      if (!backtest) {
+        return res.status(404).json({ error: "Backtest not found" });
+      }
+      
+      // Ensure user can only delete their own backtests
+      if (backtest.userId !== userId) {
+        return res.status(403).json({ error: "Access denied to this backtest" });
+      }
       
       // First delete all associated backtest trades
       const trades = await storage.getBacktestTrades(backtestId);
@@ -846,14 +894,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create backtest from existing (edit/duplicate)
-  app.post("/api/backtests/:id/duplicate", async (req, res) => {
+  app.post("/api/backtests/:id/duplicate", requireAuthFlexible, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = 1; // In real app, get from session
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
       const originalBacktest = await storage.getBacktest(Number(id));
       
       if (!originalBacktest) {
         return res.status(404).json({ error: "Original backtest not found" });
+      }
+      
+      // Ensure user can only duplicate their own backtests
+      if (originalBacktest.userId !== userId) {
+        return res.status(403).json({ error: "Access denied to this backtest" });
       }
 
       // Parse update data and merge with original
@@ -901,9 +958,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get backtest trades endpoint
-  app.get("/api/backtests/:id/trades", async (req, res) => {
+  app.get("/api/backtests/:id/trades", requireAuthFlexible, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
+      const backtest = await storage.getBacktest(Number(id));
+      if (!backtest) {
+        return res.status(404).json({ error: "Backtest not found" });
+      }
+      
+      // Ensure user can only access trades from their own backtests
+      if (backtest.userId !== userId) {
+        return res.status(403).json({ error: "Access denied to this backtest" });
+      }
+      
       const trades = await storage.getBacktestTrades(Number(id));
       res.json(trades);
     } catch (error) {
