@@ -381,8 +381,8 @@ export default function EodReports() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : eodData && eodData.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="overflow-x-auto border rounded-lg">
+              <Table className="min-w-[2000px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>
