@@ -1,6 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { 
   TrendingUpIcon, 
   BriefcaseIcon, 
@@ -16,7 +18,9 @@ import {
   PieChartIcon,
   GraduationCapIcon,
   StarIcon,
-  FileTextIcon
+  FileTextIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from "lucide-react";
 
 const navigation = [
@@ -35,7 +39,12 @@ const navigation = [
   { name: "Logs & Errors", href: "/logs", icon: ScrollTextIcon },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isCollapsed: boolean;
+  onToggle: () => void;
+}
+
+export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const [location] = useLocation();
   
   const { data: user } = useQuery({
@@ -68,17 +77,41 @@ export default function Sidebar() {
   const isAdmin = (user as any)?.role === 'admin';
 
   return (
-    <aside className="w-64 bg-card border-r border-border flex-shrink-0">
-      {/* Logo */}
+    <aside className={cn(
+      "bg-card border-r border-border flex-shrink-0 transition-all duration-300",
+      isCollapsed ? "w-16" : "w-64"
+    )}>
+      {/* Header with Logo and Toggle */}
       <div className="p-6 border-b border-border">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <TrendingUpIcon className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">TradingPro AI</h1>
-            <p className="text-xs text-muted-foreground">Trading Dashboard</p>
-          </div>
+        <div className="flex items-center justify-between">
+          {!isCollapsed && (
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <TrendingUpIcon className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-foreground">TradingPro AI</h1>
+                <p className="text-xs text-muted-foreground">Trading Dashboard</p>
+              </div>
+            </div>
+          )}
+          {isCollapsed && (
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto">
+              <TrendingUpIcon className="w-5 h-5 text-primary-foreground" />
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggle}
+            className="h-8 w-8"
+          >
+            {isCollapsed ? (
+              <ChevronRightIcon className="h-4 w-4" />
+            ) : (
+              <ChevronLeftIcon className="h-4 w-4" />
+            )}
+          </Button>
         </div>
       </div>
       
@@ -89,13 +122,14 @@ export default function Sidebar() {
           
           return (
             <Link key={item.name} href={item.href} className={cn(
-              "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
+              "flex items-center px-3 py-2 rounded-lg transition-colors",
+              isCollapsed ? "justify-center" : "space-x-3",
               isActive 
                 ? "bg-primary/10 text-primary border border-primary/20" 
                 : "hover:bg-accent text-muted-foreground hover:text-foreground"
             )}>
               <item.icon className="w-5 h-5" />
-              <span>{item.name}</span>
+              {!isCollapsed && <span>{item.name}</span>}
             </Link>
           );
         })}
@@ -105,13 +139,14 @@ export default function Sidebar() {
           <>
             <div className="border-t border-border my-4"></div>
             <Link href="/admin" className={cn(
-              "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
+              "flex items-center px-3 py-2 rounded-lg transition-colors",
+              isCollapsed ? "justify-center" : "space-x-3",
               location === "/admin"
                 ? "bg-primary/10 text-primary border border-primary/20" 
                 : "hover:bg-accent text-muted-foreground hover:text-foreground"
             )}>
               <ShieldIcon className="w-5 h-5" />
-              <span>Admin Dashboard</span>
+              {!isCollapsed && <span>Admin Dashboard</span>}
             </Link>
           </>
         )}
