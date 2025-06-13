@@ -1285,9 +1285,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/upstox/link-account", async (req, res) => {
+  app.post("/api/upstox/link-account", requireAuthFlexible, async (req: any, res) => {
     try {
-      const userId = 1; // In real app, get from session
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
       const data = upstoxAccountLinkSchema.parse(req.body);
       
       // Verify the access token by getting user profile
@@ -1309,13 +1313,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isUpstoxLinked: true,
       });
 
+      console.log("Upstox account linked successfully for user:", { userId, upstoxUserId: data.userId });
+
       res.json({ 
         message: "Upstox account linked successfully",
         user: {
           id: updatedUser.id,
           username: updatedUser.username,
           isUpstoxLinked: updatedUser.isUpstoxLinked,
-          upstoxUserId: updatedUser.upstoxUserId
+          upstoxUserId: data.userId
         }
       });
     } catch (error) {
@@ -1395,9 +1401,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/upstox/refresh-token", async (req, res) => {
+  app.post("/api/upstox/refresh-token", requireAuthFlexible, async (req: any, res) => {
     try {
-      const userId = 1; // In real app, get from session
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
       const account = await storage.getAccount(userId);
       
       if (!account?.upstoxRefreshToken) {
@@ -1427,9 +1437,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/upstox/unlink", async (req, res) => {
+  app.post("/api/upstox/unlink", requireAuthFlexible, async (req: any, res) => {
     try {
-      const userId = 1; // In real app, get from session
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
       
       // Remove Upstox credentials from account
       await storage.updateAccount(userId, {
@@ -1445,6 +1458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isUpstoxLinked: false,
       });
 
+      console.log("Upstox account unlinked for user:", userId);
       res.json({ message: "Upstox account unlinked successfully" });
     } catch (error) {
       console.error("Error unlinking Upstox account:", error);
@@ -1452,9 +1466,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/upstox/account-status", async (req, res) => {
+  app.get("/api/upstox/account-status", requireAuthFlexible, async (req: any, res) => {
     try {
-      const userId = 1; // In real app, get from session
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
       const user = await storage.getUser(userId);
       const account = await storage.getAccount(userId);
       
