@@ -74,10 +74,11 @@ export default function EodReports() {
 
   // Fetch EOD price reports with filters
   const { data: eodData, isLoading, refetch } = useQuery<EodPriceReport[]>({
-    queryKey: ["/api/eod-price-report", selectedSymbol, startDate, endDate, limit],
+    queryKey: ["/api/eod-price-report", selectedSymbol, selectedExpiry, startDate, endDate, limit],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedSymbol && selectedSymbol !== "all") params.append("symbol", selectedSymbol);
+      if (selectedExpiry && selectedExpiry !== "all") params.append("expiryDt", selectedExpiry);
       if (startDate) params.append("startDate", startDate);
       if (endDate) params.append("endDate", endDate);
       if (limit) params.append("limit", limit);
