@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Bot, SparklesIcon, TrendingUpIcon, ChevronRightIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { wsManager } from "@/lib/websocket";
 import { useEffect } from "react";
 
@@ -20,7 +20,7 @@ export default function AIStrategyBuilder() {
   });
 
   useEffect(() => {
-    if (strategies) {
+    if (strategies && Array.isArray(strategies)) {
       setActiveStrategies(strategies.filter((s: any) => s.isActive));
     }
   }, [strategies]);
@@ -43,6 +43,8 @@ export default function AIStrategyBuilder() {
       return response.json();
     },
     onSuccess: (data) => {
+      // Invalidate strategies cache to refresh the data
+      queryClient.invalidateQueries({ queryKey: ["/api/strategies"] });
       toast({
         title: "Strategy Generated!",
         description: "Your AI strategy has been generated. Review it in the strategies section.",

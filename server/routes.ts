@@ -824,15 +824,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/strategies/generate", async (req, res) => {
+  app.post("/api/strategies/generate", requireAuth, async (req, res) => {
     try {
       const { prompt } = req.body;
       if (!prompt) {
         return res.status(400).json({ error: "Prompt is required" });
       }
       
+      const userId = req.session.userId!;
       const generatedStrategy = await generateStrategy(prompt);
-      res.json(generatedStrategy);
+      
+      // Automatically save the generated strategy to the database
+      const strategyData = insertStrategySchema.parse({
+        name: generatedStrategy.name,
+        description: generatedStrategy.description,
+        code: generatedStrategy.code,
+        parameters: generatedStrategy.parameters,
+        userId,
+        isActive: false, // Start as inactive so user can review before activating
+      });
+      
+      const savedStrategy = await storage.createStrategy(strategyData);
+      
+      res.json({
+        ...generatedStrategy,
+        id: savedStrategy.id,
+        saved: true
+      });
     } catch (error) {
       console.error("Error generating strategy:", error);
       res.status(500).json({ error: "Failed to generate strategy" });
