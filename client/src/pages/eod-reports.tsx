@@ -61,7 +61,7 @@ export default function EodReports() {
     queryKey: ["/api/eod-price-report", selectedSymbol, startDate, endDate, limit],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (selectedSymbol) params.append("symbol", selectedSymbol);
+      if (selectedSymbol && selectedSymbol !== "all") params.append("symbol", selectedSymbol);
       if (startDate) params.append("startDate", startDate);
       if (endDate) params.append("endDate", endDate);
       if (limit) params.append("limit", limit);
@@ -255,7 +255,7 @@ export default function EodReports() {
                   <SelectValue placeholder="Choose symbol..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Symbols</SelectItem>
+                  <SelectItem value="all">All Symbols</SelectItem>
                   {symbols?.map((symbol) => (
                     <SelectItem key={symbol} value={symbol}>
                       {symbol}
