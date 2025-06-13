@@ -50,11 +50,11 @@ export default function Login() {
         description: "You have been logged in successfully.",
       });
       
-      // Invalidate auth queries and force page reload to ensure proper state
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      // Set authentication data in query cache immediately
+      queryClient.setQueryData(["/api/auth/user"], userData);
       
-      // Force page reload to ensure authentication state is properly set
-      window.location.href = "/";
+      // Use window.location.href for immediate redirect to ensure state change
+      window.location.href = "/dashboard";
     },
     onError: (error: any) => {
       toast({

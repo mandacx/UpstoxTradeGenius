@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 export function useAuth() {
-  const { data: user, isLoading, error } = useQuery({
+  const { data: user, isLoading, error, refetch } = useQuery({
     queryKey: ["/api/auth/user"],
     queryFn: async () => {
       const authToken = localStorage.getItem('authToken');
@@ -37,14 +37,16 @@ export function useAuth() {
       }
     },
     retry: false,
-    staleTime: 0,
-    refetchOnWindowFocus: false,
+    staleTime: 30000, // Cache for 30 seconds
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
-    error
+    error,
+    refetch
   };
 }
