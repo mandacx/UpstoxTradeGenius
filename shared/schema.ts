@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal, jsonb, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, decimal, jsonb, varchar, date, primaryKey, bigint } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -427,6 +427,38 @@ export const insertConfigurationSchema = createInsertSchema(configurations).omit
   id: true,
   updatedAt: true,
 });
+
+export const eodPriceReport = pgTable("eod_price_report", {
+  symbol: varchar("symbol", { length: 50 }).notNull(),
+  expiryDt: date("expiry_dt").notNull(),
+  tradeDate: date("trade_date").notNull(),
+  open: decimal("open", { precision: 12, scale: 2 }),
+  high: decimal("high", { precision: 12, scale: 2 }),
+  low: decimal("low", { precision: 12, scale: 2 }),
+  cmp: decimal("cmp", { precision: 12, scale: 2 }),
+  cashChg: decimal("cash_chg", { precision: 12, scale: 2 }),
+  indxGrp: varchar("indx_grp", { length: 50 }),
+  indxWtg: decimal("indx_wtg", { precision: 12, scale: 2 }),
+  putInt: decimal("put_int", { precision: 12, scale: 2 }),
+  callInt: decimal("call_int", { precision: 12, scale: 2 }),
+  combInt: decimal("comb_int", { precision: 12, scale: 2 }),
+  callLow: decimal("call_low", { precision: 12, scale: 2 }),
+  callHigh: decimal("call_high", { precision: 12, scale: 2 }),
+  putHigh: decimal("put_high", { precision: 12, scale: 2 }),
+  putLow: decimal("put_low", { precision: 12, scale: 2 }),
+  unusedPc: decimal("unused_pc", { precision: 12, scale: 2 }),
+  unusedPcRev: decimal("unused_pc_rev", { precision: 12, scale: 2 }),
+  trendPrice1: decimal("trend_price1", { precision: 12, scale: 2 }),
+  trendPrice2: decimal("trend_price2", { precision: 12, scale: 2 }),
+  callOi: bigint("call_oi", { mode: "number" }),
+  putOi: bigint("put_oi", { mode: "number" }),
+  callDiff: decimal("call_diff", { precision: 12, scale: 2 }),
+  putDiff: decimal("put_diff", { precision: 12, scale: 2 }),
+  combDiff: decimal("comb_diff", { precision: 12, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.symbol, table.expiryDt, table.tradeDate] }),
+}));
 
 export const insertExclusiveStrategySchema = createInsertSchema(exclusiveStrategies).omit({
   id: true,
