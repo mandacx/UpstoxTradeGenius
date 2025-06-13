@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, AlertCircle, Unlink, ExternalLink, Link, Copy, Eye, EyeOff, Edit, Save, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CheckCircle2, AlertCircle, Unlink, ExternalLink, Link, Copy, Eye, EyeOff, Edit, Save, X, HelpCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -193,6 +194,9 @@ export default function Account() {
       });
     }
   };
+
+  // Alias for the connect button in the new layout
+  const handleLinkUpstox = handleLinkAccount;
 
   const handleUnlinkAccount = async () => {
     setIsUnlinking(true);
@@ -565,6 +569,41 @@ export default function Account() {
               )}
             </div>
 
+            {/* Connect to Upstox Button */}
+            {savedConfig?.clientId && savedConfig?.hasClientSecret && !upstoxStatus?.isLinked && (
+              <div className="flex items-center gap-3 p-4 border rounded-lg bg-muted/50">
+                <Button
+                  onClick={handleLinkUpstox}
+                  disabled={isLinking}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  {isLinking ? (
+                    <>
+                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Link className="w-4 h-4 mr-2" />
+                      Connect to Upstox
+                    </>
+                  )}
+                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                        <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      <p>Click to authenticate with Upstox and link your trading account. This will open a secure Upstox login window.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
+
             {/* Connection Status */}
             {savedConfig?.clientId && savedConfig?.hasClientSecret ? (
               upstoxStatus?.isLinked ? (
@@ -619,56 +658,23 @@ export default function Account() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      Connect your Upstox account to enable live trading, real-time market data, and portfolio synchronization.
+                      Your Upstox API credentials are configured but your account is not yet linked. Connect now to enable live trading and real-time data.
                     </AlertDescription>
                   </Alert>
                   
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium mb-2">Benefits of linking your Upstox account:</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1 pl-4">
-                        <li>• Execute trades directly from the platform</li>
-                        <li>• Access real-time market data and quotes</li>
-                        <li>• Sync your portfolio and positions</li>
-                        <li>• View live account balance and margins</li>
-                        <li>• Get automated trade notifications</li>
-                      </ul>
-                    </div>
-
-                    <div className="border-l-4 border-blue-500 pl-4 py-2">
-                      <p className="text-sm font-medium">Setup Instructions:</p>
-                      <ol className="text-sm text-muted-foreground mt-1 space-y-1">
-                        <li>1. Ensure you have an active Upstox trading account</li>
-                        <li>2. Click "Connect to Upstox" below to start OAuth flow</li>
-                        <li>3. Login with your Upstox credentials in the popup window</li>
-                        <li>4. Grant permission for API access</li>
-                        <li>5. You'll be redirected back and account will be linked</li>
-                      </ol>
-                    </div>
+                  <div className="space-y-3">
+                    <h4 className="font-medium">Benefits of linking your account:</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1 pl-4">
+                      <li>• Execute trades directly from strategies</li>
+                      <li>• Access real-time market data and quotes</li>
+                      <li>• Sync portfolio and positions automatically</li>
+                      <li>• View live account balance and margins</li>
+                    </ul>
                   </div>
-
-                  <Button
-                    onClick={handleLinkAccount}
-                    disabled={isLinking}
-                    className="w-full"
-                    size="lg"
-                  >
-                    {isLinking ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                        Connecting to Upstox...
-                      </>
-                    ) : (
-                      <>
-                        <Link className="w-4 h-4 mr-2" />
-                        Connect to Upstox
-                      </>
-                    )}
-                  </Button>
                 </div>
               )
             ) : (
