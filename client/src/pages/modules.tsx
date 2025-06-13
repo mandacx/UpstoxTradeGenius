@@ -7,7 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
@@ -39,6 +40,8 @@ const moduleIcons = {
 export default function Modules() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<any>(null);
+  const [moduleToToggle, setModuleToToggle] = useState<any>(null);
+  const [isWarningOpen, setIsWarningOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: modules, isLoading } = useQuery({
@@ -68,15 +71,19 @@ export default function Modules() {
   });
 
   const toggleModuleMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const response = await apiRequest("POST", `/api/modules/${id}/toggle`);
+    mutationFn: async ({ id, action }: { id: number; action: 'start' | 'stop' }) => {
+      const response = await apiRequest("POST", `/api/modules/${id}/toggle`, { action });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/modules"] });
+      setIsWarningOpen(false);
+      setModuleToToggle(null);
+      
+      const actionText = variables.action === 'start' ? 'started' : 'stopped';
       toast({
-        title: "Module Updated",
-        description: "Module status has been updated.",
+        title: `Module ${actionText.charAt(0).toUpperCase() + actionText.slice(1)}`,
+        description: `${moduleToToggle?.name} has been ${actionText} successfully.`,
       });
     },
     onError: (error: any) => {
@@ -85,8 +92,72 @@ export default function Modules() {
         description: error.message || "Failed to update module",
         variant: "destructive",
       });
+      setIsWarningOpen(false);
+      setModuleToToggle(null);
     },
   });
+
+  const handleToggleClick = (module: any, newStatus: boolean) => {
+    setModuleToToggle(module);
+    setIsWarningOpen(true);
+  };
+
+  const confirmToggle = () => {
+    if (moduleToToggle) {
+      const action = moduleToToggle.status === 'running' ? 'stop' : 'start';
+      toggleModuleMutation.mutate({ id: moduleToToggle.id, action });
+    }
+  };
+
+  const getModuleWarning = (module: any) => {
+    const isRunning = module.status === 'running';
+    if (isRunning) {
+      switch (module.name) {
+        case 'Data Fetcher':
+          return {
+            title: 'Stop Data Fetcher?',
+            description: 'This will stop real-time market data collection. Active strategies may not function properly without live data. Positions and orders will not be updated automatically.',
+            consequences: ['Real-time market data will stop', 'Active strategies may malfunction', 'Manual data refresh required']
+          };
+        case 'Strategy Engine':
+          return {
+            title: 'Stop Strategy Engine?',
+            description: 'This will halt all automated trading strategies. Any running strategies will be stopped immediately and no new trades will be executed.',
+            consequences: ['All active strategies will stop', 'No new trades will be executed', 'Open positions require manual management']
+          };
+        case 'Order Manager':
+          return {
+            title: 'Stop Order Manager?',
+            description: 'This will disable order placement and management. You will not be able to place new trades or modify existing orders through the system.',
+            consequences: ['New order placement disabled', 'Order modifications blocked', 'Manual trading required']
+          };
+        case 'Risk Manager':
+          return {
+            title: 'Stop Risk Manager?',
+            description: 'This will disable automatic risk controls and position limits. Your account will not have automated protection against excessive losses.',
+            consequences: ['Automatic risk controls disabled', 'Position limits not enforced', 'Manual risk monitoring required']
+          };
+        case 'Portfolio Sync':
+          return {
+            title: 'Stop Portfolio Sync?',
+            description: 'This will stop automatic synchronization with your broker account. Portfolio values and positions may become outdated.',
+            consequences: ['Portfolio data sync disabled', 'Position updates stopped', 'Manual refresh required']
+          };
+        default:
+          return {
+            title: `Stop ${module.name}?`,
+            description: 'This will stop the selected module and may affect related trading functionality.',
+            consequences: ['Module functionality disabled', 'Related features may be affected']
+          };
+      }
+    } else {
+      return {
+        title: `Start ${module.name}?`,
+        description: `This will start the ${module.name} module and enable its functionality.`,
+        consequences: [`${module.name} will be activated`, 'Related features will be enabled']
+      };
+    }
+  };
 
   const handleCreateModule = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -137,9 +208,10 @@ export default function Modules() {
     );
   }
 
-  const runningModules = modules?.filter((m: any) => m.status === "running") || [];
-  const errorModules = modules?.filter((m: any) => m.status === "error") || [];
-  const totalModules = modules?.length || 0;
+  const modulesList = Array.isArray(modules) ? modules : [];
+  const runningModules = modulesList.filter((m: any) => m.status === "running");
+  const errorModules = modulesList.filter((m: any) => m.status === "error");
+  const totalModules = modulesList.length;
 
   return (
     <div className="p-6 space-y-6">
@@ -328,7 +400,7 @@ export default function Modules() {
                         <span className="text-sm text-gray-400">Active</span>
                         <Switch
                           checked={module.status === "running"}
-                          onCheckedChange={() => toggleModuleMutation.mutate(module.id)}
+                          onCheckedChange={() => handleToggleClick(module, module.status !== "running")}
                           disabled={toggleModuleMutation.isPending}
                           className="data-[state=checked]:bg-profit-green"
                         />
@@ -350,6 +422,52 @@ export default function Modules() {
           })
         )}
       </div>
+
+      {/* Warning Dialog */}
+      <AlertDialog open={isWarningOpen} onOpenChange={setIsWarningOpen}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">
+              {moduleToToggle && getModuleWarning(moduleToToggle).title}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              {moduleToToggle && getModuleWarning(moduleToToggle).description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          {moduleToToggle && (
+            <div className="my-4">
+              <h4 className="text-sm font-semibold mb-2 text-foreground">Consequences:</h4>
+              <ul className="space-y-1">
+                {getModuleWarning(moduleToToggle).consequences.map((consequence, index) => (
+                  <li key={index} className="text-sm text-muted-foreground flex items-center">
+                    <div className="w-1.5 h-1.5 bg-destructive rounded-full mr-2 flex-shrink-0" />
+                    {consequence}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsWarningOpen(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmToggle}
+              disabled={toggleModuleMutation.isPending}
+              className={moduleToToggle?.status === 'running' ? 'bg-destructive hover:bg-destructive/90' : 'bg-primary hover:bg-primary/90'}
+            >
+              {toggleModuleMutation.isPending 
+                ? 'Processing...' 
+                : moduleToToggle?.status === 'running' 
+                  ? 'Stop Module' 
+                  : 'Start Module'
+              }
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
