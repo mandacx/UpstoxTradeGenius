@@ -257,33 +257,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/logout", requireAuth, async (req, res) => {
+  app.post("/api/auth/logout", async (req, res) => {
     try {
-      const userId = req.session.userId!;
+      const cookieAuthToken = req.cookies.auth_token;
+      const bearerToken = req.headers.authorization?.replace('Bearer ', '');
+      const authToken = cookieAuthToken || bearerToken;
       
-      // Clear the auth token from user record
-      await storage.updateUser(userId, { lastAuthToken: null });
+      console.log("Logout request - Session ID:", req.session.id, "User ID:", req.session.userId, "Auth Token:", authToken ? "present" : "missing");
+      
+      let userId = null;
+      
+      // Try to get user ID from session first
+      if (req.session.userId) {
+        userId = req.session.userId;
+      }
+      // Then try token-based auth for admin users
+      else if (authToken) {
+        const allUsers = await storage.getAllUsers();
+        const user = allUsers.find(u => u.lastAuthToken === authToken);
+        if (user) {
+          userId = user.id;
+        }
+      }
+      
+      if (userId) {
+        // Clear the auth token from user record
+        await storage.updateUser(userId, { lastAuthToken: null });
+        console.log("Cleared auth token for user ID:", userId);
+      }
       
       // Clear all session cookies
       res.clearCookie('connect.sid', { path: '/' });
       res.clearCookie('session', { path: '/' });
       res.clearCookie('auth', { path: '/' });
+      res.clearCookie('auth_token', { path: '/' });
       
-      req.session.destroy((err: any) => {
-        if (err) {
-          console.error("Session destroy error:", err);
-          return res.status(500).json({ error: "Failed to log out" });
-        }
-        
-        // Set additional headers to prevent caching
-        res.set({
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
+      // Destroy session if it exists
+      if (req.session) {
+        req.session.destroy((err: any) => {
+          if (err) {
+            console.error("Session destroy error:", err);
+          }
         });
-        
-        res.json({ message: "Logged out successfully" });
+      }
+      
+      // Set additional headers to prevent caching
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       });
+      
+      console.log("Logout successful");
+      res.json({ message: "Logged out successfully" });
     } catch (error: any) {
       console.error("Logout error:", error);
       res.status(500).json({ error: "Failed to log out" });

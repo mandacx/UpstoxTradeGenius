@@ -191,39 +191,51 @@ export default function Topbar() {
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
-      // Clear all authentication data
-      localStorage.clear();
-      sessionStorage.clear();
-      queryClient.clear();
-      
-      // Clear all cookies
-      document.cookie.split(";").forEach(function(c) { 
-        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-      });
-      
-      toast({
-        title: "Logged out",
-        description: "You have been successfully logged out.",
-      });
-      
-      // Redirect to home page instead of login
-      window.location.href = "/";
+      // Perform complete logout cleanup
+      performCompleteLogout();
     },
     onError: () => {
       // Even if the server request fails, clear all authentication data
-      localStorage.clear();
-      sessionStorage.clear();
-      queryClient.clear();
-      
-      // Clear all cookies
-      document.cookie.split(";").forEach(function(c) { 
-        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-      });
-      
-      // Redirect to home page
-      window.location.href = "/";
+      performCompleteLogout();
     },
   });
+
+  const performCompleteLogout = () => {
+    // Clear all authentication data
+    localStorage.clear();
+    sessionStorage.clear();
+    queryClient.clear();
+    
+    // Clear all cookies with different paths and domains
+    const cookiesToClear = [
+      'connect.sid', 'session', 'auth', 'auth_token', 'authToken',
+      'user_session', 'admin_token', 'trading_session'
+    ];
+    
+    cookiesToClear.forEach(cookieName => {
+      // Clear for current path
+      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+      // Clear for root path
+      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+      // Clear without domain
+      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    });
+    
+    // Clear all cookies using the split method as fallback
+    document.cookie.split(";").forEach(function(c) { 
+      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+    });
+    
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out.",
+    });
+    
+    // Force complete page refresh to landing page
+    setTimeout(() => {
+      window.location.replace("/");
+    }, 500);
+  };
 
   const handleLogout = () => {
     logoutMutation.mutate();
