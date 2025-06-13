@@ -109,12 +109,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user = await storage.getUserByUsername(emailOrUsername);
       }
       
+      console.log("Login attempt for:", emailOrUsername, "User found:", user ? "yes" : "no");
+      
       if (!user) {
         return res.status(401).json({ error: "Invalid email/username or password" });
       }
       
       // Verify password
       const isValidPassword = await bcrypt.compare(password, user.password);
+      console.log("Password validation for user", user.username, ":", isValidPassword ? "success" : "failed");
+      
       if (!isValidPassword) {
         return res.status(401).json({ error: "Invalid email or password" });
       }
@@ -125,10 +129,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store the auth token in the user record for validation
       await storage.updateUser(user.id, { lastAuthToken: authToken });
       
+      // Also set session for fallback compatibility
+      req.session.userId = user.id;
+      req.session.authToken = authToken;
+      
       console.log("Auth token created for user:", user.id, "Token:", authToken.substring(0, 8) + "...");
       
-      // Remove password from response
-      const { password: _, ...userResponse } = user;
+      // Remove password from response and include updated auth token
+      const updatedUser = await storage.getUser(user.id);
+      const { password: _, ...userResponse } = updatedUser!;
       res.json({
         ...userResponse,
         authToken: authToken
