@@ -7,7 +7,7 @@ import { generateStrategy } from "./openai";
 import { runEnhancedBacktest, cancelBacktest } from "./enhanced-backtesting";
 import { upstoxService, getValidUpstoxToken } from "./upstox";
 import { configService } from "./config-service";
-import { insertStrategySchema, insertBacktestSchema, insertLogSchema, upstoxAuthSchema, upstoxAccountLinkSchema, insertUserSchema } from "@shared/schema";
+import { insertStrategySchema, insertBacktestSchema, insertLogSchema, upstoxAuthSchema, upstoxAccountLinkSchema, insertUserSchema, insertExclusiveStrategySchema } from "@shared/schema";
 import bcrypt from "bcrypt";
 
 
@@ -707,6 +707,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching strategies:", error);
       res.status(500).json({ error: "Failed to fetch strategies" });
+    }
+  });
+
+  // Exclusive strategies endpoints
+  app.get("/api/exclusive-strategies", async (req, res) => {
+    try {
+      const strategies = await storage.getExclusiveStrategies();
+      res.json(strategies);
+    } catch (error) {
+      console.error("Error fetching exclusive strategies:", error);
+      res.status(500).json({ error: "Failed to fetch exclusive strategies" });
+    }
+  });
+
+  app.post("/api/exclusive-strategies", requireAuthFlexible, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const validatedData = insertExclusiveStrategySchema.parse(req.body);
+      const strategy = await storage.createExclusiveStrategy(validatedData);
+      res.status(201).json(strategy);
+    } catch (error) {
+      console.error("Error creating exclusive strategy:", error);
+      res.status(500).json({ error: "Failed to create exclusive strategy" });
+    }
+  });
+
+  app.get("/api/exclusive-strategies/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const strategy = await storage.getExclusiveStrategy(Number(id));
+      if (!strategy) {
+        return res.status(404).json({ error: "Exclusive strategy not found" });
+      }
+      res.json(strategy);
+    } catch (error) {
+      console.error("Error fetching exclusive strategy:", error);
+      res.status(500).json({ error: "Failed to fetch exclusive strategy" });
+    }
+  });
+
+  app.put("/api/exclusive-strategies/:id", requireAuthFlexible, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const { id } = req.params;
+      const validatedData = insertExclusiveStrategySchema.partial().parse(req.body);
+      const strategy = await storage.updateExclusiveStrategy(Number(id), validatedData);
+      res.json(strategy);
+    } catch (error) {
+      console.error("Error updating exclusive strategy:", error);
+      res.status(500).json({ error: "Failed to update exclusive strategy" });
     }
   });
 

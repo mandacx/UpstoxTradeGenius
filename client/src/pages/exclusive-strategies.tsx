@@ -30,7 +30,7 @@ export default function ExclusiveStrategies() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const { data: strategies = [], isLoading } = useQuery({
+  const { data: strategies = [], isLoading } = useQuery<ExclusiveStrategy[]>({
     queryKey: ["/api/exclusive-strategies"],
   });
 
@@ -197,7 +197,11 @@ export default function ExclusiveStrategies() {
                             placeholder="Detailed overview of strategy mechanics and market approach"
                             className="resize-none" 
                             rows={3}
-                            {...field} 
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            disabled={field.disabled}
                           />
                         </FormControl>
                         <FormMessage />
