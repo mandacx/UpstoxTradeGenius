@@ -315,10 +315,10 @@ export default function Topbar() {
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 bg-trading-card border-trading-border" align="end">
-              <div className="p-4 border-b border-trading-border">
+            <PopoverContent className="w-80 p-0 bg-card border-border" align="end">
+              <div className="p-4 border-b border-border">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Notifications</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
                   {unreadCount > 0 && (
                     <Button
                       variant="ghost"
@@ -336,8 +336,8 @@ export default function Topbar() {
                   notifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`p-3 border-b border-trading-border last:border-b-0 cursor-pointer hover:bg-gray-700/50 ${
-                        !notification.read ? 'bg-blue-500/10' : ''
+                      className={`p-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-accent/50 ${
+                        !notification.read ? 'bg-primary/10' : ''
                       }`}
                       onClick={() => markNotificationAsRead(notification.id)}
                     >
@@ -346,24 +346,24 @@ export default function Topbar() {
                           {getNotificationIcon(notification.type)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
+                          <p className="text-sm font-medium truncate text-foreground">
                             {notification.title}
                           </p>
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {notification.message}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground/70 mt-1">
                             {formatTimestamp(notification.timestamp)}
                           </p>
                         </div>
                         {!notification.read && (
-                          <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
+                          <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-2"></div>
                         )}
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="p-4 text-center text-gray-400 text-sm">
+                  <div className="p-4 text-center text-muted-foreground text-sm">
                     No notifications
                   </div>
                 )}
@@ -377,7 +377,7 @@ export default function Topbar() {
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user?.profileImageUrl || undefined} alt="User" />
-                  <AvatarFallback className="bg-blue-600 text-white">
+                  <AvatarFallback className="bg-primary text-primary-foreground">
                     {user?.firstName ? user.firstName.charAt(0).toUpperCase() : 
                      user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
                   </AvatarFallback>
