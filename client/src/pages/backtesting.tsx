@@ -240,25 +240,25 @@ export default function Backtesting() {
     );
   }
 
-  if (error) {
+  if (error && error.message?.includes('401')) {
     return (
       <div className="p-6">
-        <Card className="bg-trading-card border-red-600">
+        <Card className="bg-trading-card border-yellow-600">
           <CardHeader>
-            <CardTitle className="text-red-400 flex items-center gap-2">
+            <CardTitle className="text-yellow-400 flex items-center gap-2">
               <StopCircleIcon className="h-5 w-5" />
-              Authentication Required
+              Session Expired
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-trading-text-secondary mb-4">
-              Please log in to access your backtesting data. Your trading tests and results are protected and only visible to you.
+              Your session has expired. Please refresh the page to continue accessing your backtesting data.
             </p>
             <Button 
-              onClick={() => window.location.href = '/login'} 
+              onClick={() => window.location.reload()} 
               className="bg-primary hover:bg-primary/90"
             >
-              Go to Login
+              Refresh Page
             </Button>
           </CardContent>
         </Card>

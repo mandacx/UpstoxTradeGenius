@@ -29,7 +29,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Check session-based auth first
       if (req.session.userId) {
-        return next();
+        const user = await storage.getUser(req.session.userId);
+        if (user) {
+          (req as any).user = user;
+          return next();
+        }
       }
 
       // Try token-based auth
@@ -43,12 +47,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (user) {
           // Set user in request for downstream handlers
-          (req as any).authUser = user;
+          (req as any).user = user;
           return next();
         }
       }
 
-      return res.status(401).json({ error: "Authentication required" });
+      return res.status(401).json({ error: "User not authenticated" });
     } catch (error) {
       console.error("Auth error:", error);
       res.status(500).json({ error: "Authentication failed" });
