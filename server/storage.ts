@@ -75,6 +75,39 @@ export interface IStorage {
   // Additional user operations
   getAllUsers(): Promise<User[]>;
 
+  // Learning path operations
+  getLearningPaths(): Promise<LearningPath[]>;
+  getLearningPath(id: number): Promise<LearningPath | undefined>;
+  createLearningPath(path: InsertLearningPath): Promise<LearningPath>;
+  updateLearningPath(id: number, data: Partial<LearningPath>): Promise<LearningPath>;
+
+  // Lesson operations
+  getLessons(pathId: number): Promise<Lesson[]>;
+  getLesson(id: number): Promise<Lesson | undefined>;
+  createLesson(lesson: InsertLesson): Promise<Lesson>;
+  updateLesson(id: number, data: Partial<Lesson>): Promise<Lesson>;
+
+  // Quiz operations
+  getQuizzes(lessonId: number): Promise<Quiz[]>;
+  createQuiz(quiz: InsertQuiz): Promise<Quiz>;
+
+  // User progress operations
+  getUserProgress(userId: number, pathId?: number, lessonId?: number): Promise<UserProgress[]>;
+  getUserProgressByLesson(userId: number, lessonId: number): Promise<UserProgress | undefined>;
+  createUserProgress(progress: InsertUserProgress): Promise<UserProgress>;
+  updateUserProgress(id: number, data: Partial<UserProgress>): Promise<UserProgress>;
+
+  // Achievement operations
+  getAchievements(): Promise<Achievement[]>;
+  getUserAchievements(userId: number): Promise<UserAchievement[]>;
+  createAchievement(achievement: InsertAchievement): Promise<Achievement>;
+  createUserAchievement(userAchievement: InsertUserAchievement): Promise<UserAchievement>;
+
+  // User stats operations
+  getUserStats(userId: number): Promise<UserStats | undefined>;
+  createUserStats(stats: InsertUserStats): Promise<UserStats>;
+  updateUserStats(userId: number, data: Partial<UserStats>): Promise<UserStats>;
+
   // Subscription operations
   getSubscriptionPlans(): Promise<SubscriptionPlan[]>;
   getActiveSubscriptionPlans(): Promise<SubscriptionPlan[]>;

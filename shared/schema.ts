@@ -234,6 +234,100 @@ export const usageAnalytics = pgTable("usage_analytics", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Learning path tables
+export const learningPaths = pgTable("learning_paths", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  difficulty: text("difficulty").notNull(), // beginner, intermediate, advanced
+  estimatedTime: integer("estimated_time"), // in minutes
+  category: text("category").notNull(), // technical_analysis, fundamental_analysis, risk_management, etc.
+  prerequisites: jsonb("prerequisites").default("[]"), // array of prerequisite path IDs
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const lessons = pgTable("lessons", {
+  id: serial("id").primaryKey(),
+  pathId: integer("path_id").notNull().references(() => learningPaths.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  content: text("content").notNull(), // markdown content
+  lessonType: text("lesson_type").notNull(), // reading, video, interactive, quiz, simulation
+  estimatedTime: integer("estimated_time"), // in minutes
+  points: integer("points").default(10), // points awarded for completion
+  resources: jsonb("resources").default("[]"), // additional resources
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const quizzes = pgTable("quizzes", {
+  id: serial("id").primaryKey(),
+  lessonId: integer("lesson_id").notNull().references(() => lessons.id),
+  question: text("question").notNull(),
+  options: jsonb("options").notNull(), // array of options
+  correctAnswer: integer("correct_answer").notNull(), // index of correct option
+  explanation: text("explanation"),
+  points: integer("points").default(5),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userProgress = pgTable("user_progress", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  pathId: integer("path_id").references(() => learningPaths.id),
+  lessonId: integer("lesson_id").references(() => lessons.id),
+  status: text("status").notNull(), // not_started, in_progress, completed
+  progress: integer("progress").default(0), // percentage 0-100
+  score: integer("score").default(0), // quiz score if applicable
+  timeSpent: integer("time_spent").default(0), // in seconds
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const achievements = pgTable("achievements", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  icon: text("icon"), // icon name or emoji
+  category: text("category").notNull(), // learning, trading, engagement
+  condition: jsonb("condition").notNull(), // achievement condition object
+  points: integer("points").default(50),
+  isHidden: boolean("is_hidden").default(false), // hidden until unlocked
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userAchievements = pgTable("user_achievements", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  achievementId: integer("achievement_id").notNull().references(() => achievements.id),
+  unlockedAt: timestamp("unlocked_at").defaultNow(),
+  notified: boolean("notified").default(false),
+});
+
+export const userStats = pgTable("user_stats", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id).unique(),
+  totalPoints: integer("total_points").default(0),
+  level: integer("level").default(1),
+  experiencePoints: integer("experience_points").default(0),
+  lessonsCompleted: integer("lessons_completed").default(0),
+  pathsCompleted: integer("paths_completed").default(0),
+  quizAverage: decimal("quiz_average", { precision: 5, scale: 2 }).default("0"),
+  currentStreak: integer("current_streak").default(0), // days
+  longestStreak: integer("longest_streak").default(0),
+  lastActivityDate: timestamp("last_activity_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -344,6 +438,46 @@ export const insertUsageAnalyticsSchema = createInsertSchema(usageAnalytics).omi
   createdAt: true,
 });
 
+// Learning path schemas
+export const insertLearningPathSchema = createInsertSchema(learningPaths).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLessonSchema = createInsertSchema(lessons).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertQuizSchema = createInsertSchema(quizzes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserProgressSchema = createInsertSchema(userProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAchievementSchema = createInsertSchema(achievements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserAchievementSchema = createInsertSchema(userAchievements).omit({
+  id: true,
+  unlockedAt: true,
+});
+
+export const insertUserStatsSchema = createInsertSchema(userStats).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -375,3 +509,19 @@ export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
 export type InsertPaymentTransaction = z.infer<typeof insertPaymentTransactionSchema>;
 export type UsageAnalytics = typeof usageAnalytics.$inferSelect;
 export type InsertUsageAnalytics = z.infer<typeof insertUsageAnalyticsSchema>;
+
+// Learning path types
+export type LearningPath = typeof learningPaths.$inferSelect;
+export type InsertLearningPath = z.infer<typeof insertLearningPathSchema>;
+export type Lesson = typeof lessons.$inferSelect;
+export type InsertLesson = z.infer<typeof insertLessonSchema>;
+export type Quiz = typeof quizzes.$inferSelect;
+export type InsertQuiz = z.infer<typeof insertQuizSchema>;
+export type UserProgress = typeof userProgress.$inferSelect;
+export type InsertUserProgress = z.infer<typeof insertUserProgressSchema>;
+export type Achievement = typeof achievements.$inferSelect;
+export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
+export type UserAchievement = typeof userAchievements.$inferSelect;
+export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
+export type UserStats = typeof userStats.$inferSelect;
+export type InsertUserStats = z.infer<typeof insertUserStatsSchema>;
