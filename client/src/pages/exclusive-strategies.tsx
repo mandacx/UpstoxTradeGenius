@@ -42,14 +42,14 @@ export default function ExclusiveStrategies() {
       overview: "",
       algorithm: "",
       riskLevel: "medium",
-      expectedReturn: "",
-      maxDrawdown: "",
+      expectedReturn: 0,
+      maxDrawdown: 0,
       timeframe: "1h",
       assetClasses: [],
       parameters: {},
       isActive: true,
       isPremium: false,
-      minimumCapital: "",
+      minimumCapital: 0,
     },
   });
 
@@ -129,7 +129,7 @@ export default function ExclusiveStrategies() {
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}

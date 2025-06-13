@@ -13,6 +13,7 @@ import Dashboard from "@/pages/dashboard";
 import Positions from "@/pages/positions";
 import Trades from "@/pages/trades";
 import Strategies from "@/pages/strategies";
+import ExclusiveStrategies from "@/pages/exclusive-strategies";
 import Backtesting from "@/pages/backtesting";
 import Modules from "@/pages/modules";
 import Logs from "@/pages/logs";
@@ -38,6 +39,7 @@ function AuthenticatedApp() {
             <Route path="/positions" component={Positions} />
             <Route path="/trades" component={Trades} />
             <Route path="/strategies" component={Strategies} />
+            <Route path="/exclusive-strategies" component={ExclusiveStrategies} />
             <Route path="/backtesting" component={Backtesting} />
             <Route path="/modules" component={Modules} />
             <Route path="/logs" component={Logs} />

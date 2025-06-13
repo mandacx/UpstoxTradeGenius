@@ -1,10 +1,11 @@
 import { 
-  users, accounts, positions, trades, strategies, backtests, backtestTrades, modules, logs, configurations,
+  users, accounts, positions, trades, strategies, exclusiveStrategies, backtests, backtestTrades, modules, logs, configurations,
   subscriptionPlans, userSubscriptions, paymentMethods, paymentTransactions, usageAnalytics,
   learningPaths, lessons, quizzes, userProgress, achievements, userAchievements, userStats,
   type User, type InsertUser, type Account, type InsertAccount,
   type Position, type InsertPosition, type Trade, type InsertTrade,
-  type Strategy, type InsertStrategy, type Backtest, type InsertBacktest,
+  type Strategy, type InsertStrategy, type ExclusiveStrategy, type InsertExclusiveStrategy,
+  type Backtest, type InsertBacktest,
   type BacktestTrade, type InsertBacktestTrade,
   type Module, type InsertModule, type Log, type InsertLog,
   type Configuration, type InsertConfiguration,
@@ -50,6 +51,12 @@ export interface IStorage {
   getStrategy(id: number): Promise<Strategy | undefined>;
   createStrategy(strategy: InsertStrategy): Promise<Strategy>;
   updateStrategy(id: number, data: Partial<Strategy>): Promise<Strategy>;
+
+  // Exclusive strategy operations
+  getExclusiveStrategies(): Promise<ExclusiveStrategy[]>;
+  getExclusiveStrategy(id: number): Promise<ExclusiveStrategy | undefined>;
+  createExclusiveStrategy(strategy: InsertExclusiveStrategy): Promise<ExclusiveStrategy>;
+  updateExclusiveStrategy(id: number, data: Partial<ExclusiveStrategy>): Promise<ExclusiveStrategy>;
 
   // Backtest operations
   getBacktests(userId: number): Promise<Backtest[]>;
@@ -269,6 +276,33 @@ export class DatabaseStorage implements IStorage {
       .update(strategies)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(strategies.id, id))
+      .returning();
+    return strategy;
+  }
+
+  // Exclusive strategy operations
+  async getExclusiveStrategies(): Promise<ExclusiveStrategy[]> {
+    return await db.select().from(exclusiveStrategies).where(eq(exclusiveStrategies.isActive, true)).orderBy(desc(exclusiveStrategies.createdAt));
+  }
+
+  async getExclusiveStrategy(id: number): Promise<ExclusiveStrategy | undefined> {
+    const [strategy] = await db.select().from(exclusiveStrategies).where(eq(exclusiveStrategies.id, id));
+    return strategy || undefined;
+  }
+
+  async createExclusiveStrategy(strategy: InsertExclusiveStrategy): Promise<ExclusiveStrategy> {
+    const [newStrategy] = await db
+      .insert(exclusiveStrategies)
+      .values(strategy)
+      .returning();
+    return newStrategy;
+  }
+
+  async updateExclusiveStrategy(id: number, data: Partial<ExclusiveStrategy>): Promise<ExclusiveStrategy> {
+    const [strategy] = await db
+      .update(exclusiveStrategies)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(exclusiveStrategies.id, id))
       .returning();
     return strategy;
   }
