@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, decimal, jsonb, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -158,6 +158,82 @@ export const configurations = pgTable("configurations", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Subscription plans table
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("USD"),
+  billingCycle: text("billing_cycle").notNull(), // monthly, yearly
+  features: jsonb("features").notNull().default([]),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User subscriptions table
+export const userSubscriptions = pgTable("user_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  planId: integer("plan_id").references(() => subscriptionPlans.id).notNull(),
+  status: text("status").notNull(), // active, cancelled, expired, pending
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  autoRenew: boolean("auto_renew").default(true),
+  cancelledAt: timestamp("cancelled_at"),
+  cancellationReason: text("cancellation_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Payment methods table
+export const paymentMethods = pgTable("payment_methods", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(), // card, bank, paypal
+  provider: text("provider").notNull(), // stripe, razorpay, paypal
+  providerPaymentMethodId: text("provider_payment_method_id").notNull(),
+  cardLast4: text("card_last4"),
+  cardBrand: text("card_brand"),
+  cardExpMonth: integer("card_exp_month"),
+  cardExpYear: integer("card_exp_year"),
+  isDefault: boolean("is_default").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Payment transactions table
+export const paymentTransactions = pgTable("payment_transactions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  subscriptionId: integer("subscription_id").references(() => userSubscriptions.id),
+  paymentMethodId: integer("payment_method_id").references(() => paymentMethods.id),
+  providerTransactionId: text("provider_transaction_id").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("USD"),
+  status: text("status").notNull(), // pending, completed, failed, refunded
+  type: text("type").notNull(), // subscription, upgrade, refund
+  description: text("description"),
+  metadata: jsonb("metadata").default({}),
+  processedAt: timestamp("processed_at"),
+  failureReason: text("failure_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Usage analytics table
+export const usageAnalytics = pgTable("usage_analytics", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  feature: text("feature").notNull(), // api_calls, strategies_created, backtests_run
+  value: integer("value").notNull(),
+  metadata: jsonb("metadata").default({}),
+  recordedAt: timestamp("recorded_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -239,6 +315,35 @@ export const insertConfigurationSchema = createInsertSchema(configurations).omit
   updatedAt: true,
 });
 
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPaymentMethodSchema = createInsertSchema(paymentMethods).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPaymentTransactionSchema = createInsertSchema(paymentTransactions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUsageAnalyticsSchema = createInsertSchema(usageAnalytics).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -260,3 +365,13 @@ export type Account = typeof accounts.$inferSelect;
 export type InsertAccount = z.infer<typeof insertAccountSchema>;
 export type Configuration = typeof configurations.$inferSelect;
 export type InsertConfiguration = z.infer<typeof insertConfigurationSchema>;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
+export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema>;
+export type PaymentMethod = typeof paymentMethods.$inferSelect;
+export type InsertPaymentMethod = z.infer<typeof insertPaymentMethodSchema>;
+export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
+export type InsertPaymentTransaction = z.infer<typeof insertPaymentTransactionSchema>;
+export type UsageAnalytics = typeof usageAnalytics.$inferSelect;
+export type InsertUsageAnalytics = z.infer<typeof insertUsageAnalyticsSchema>;
