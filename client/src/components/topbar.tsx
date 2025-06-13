@@ -268,10 +268,10 @@ export default function Topbar() {
   };
 
   return (
-    <header className="bg-trading-card border-b border-trading-border px-6 py-4">
+    <header className="bg-card border-b border-border px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
-          <h2 className="text-xl font-semibold">Trading Dashboard</h2>
+          <h2 className="text-xl font-semibold text-foreground">TradingPro AI Dashboard</h2>
           <div className="flex items-center space-x-4 text-sm">
             {/* Market Status Indicator */}
             <div className="flex items-center space-x-2">
@@ -281,8 +281,8 @@ export default function Topbar() {
               }`}></div>
               <span className={getMarketStatusColor()}>{getMarketStatusText()}</span>
             </div>
-            <div className="text-gray-400">
-              NSE: <span className="text-white">{marketTime}</span>
+            <div className="text-muted-foreground">
+              NSE: <span className="text-foreground">{marketTime}</span>
             </div>
           </div>
         </div>
@@ -294,7 +294,7 @@ export default function Topbar() {
             size="sm"
             onClick={handleRefresh}
             disabled={refreshDataMutation.isPending}
-            className="p-2 rounded-lg hover:bg-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-accent transition-colors"
           >
             <RefreshCw className={`w-5 h-5 ${refreshDataMutation.isPending ? 'animate-spin' : ''}`} />
           </Button>
@@ -305,7 +305,7 @@ export default function Topbar() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="relative p-2 rounded-lg hover:bg-gray-700 transition-colors"
+                className="relative p-2 rounded-lg hover:bg-accent transition-colors"
               >
                 <BellIcon className="w-5 h-5" />
                 {unreadCount > 0 && (

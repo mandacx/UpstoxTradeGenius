@@ -293,7 +293,7 @@ export default function PreferencesPage() {
                     onClick={() => setTheme("light")}
                     className="h-20 flex-col"
                   >
-                    <div className="w-8 h-8 bg-white border rounded mb-2"></div>
+                    <div className="w-8 h-8 bg-white border border-gray-300 rounded mb-2"></div>
                     Light
                   </Button>
                   <Button
