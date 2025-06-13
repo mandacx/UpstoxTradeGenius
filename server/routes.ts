@@ -1907,5 +1907,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Learning path routes
+  app.get('/api/learning/paths', requireAuth, async (req, res) => {
+    try {
+      const paths = await storage.getLearningPaths();
+      res.json(paths);
+    } catch (error) {
+      console.error("Error fetching learning paths:", error);
+      res.status(500).json({ error: "Failed to fetch learning paths" });
+    }
+  });
+
+  app.get('/api/learning/paths/:id', requireAuth, async (req, res) => {
+    try {
+      const pathId = parseInt(req.params.id);
+      const path = await storage.getLearningPath(pathId);
+      if (!path) {
+        return res.status(404).json({ error: "Learning path not found" });
+      }
+      res.json(path);
+    } catch (error) {
+      console.error("Error fetching learning path:", error);
+      res.status(500).json({ error: "Failed to fetch learning path" });
+    }
+  });
+
+  app.get('/api/learning/paths/:id/lessons', requireAuth, async (req, res) => {
+    try {
+      const pathId = parseInt(req.params.id);
+      const lessons = await storage.getLessons(pathId);
+      res.json(lessons);
+    } catch (error) {
+      console.error("Error fetching lessons:", error);
+      res.status(500).json({ error: "Failed to fetch lessons" });
+    }
+  });
+
+  app.get('/api/learning/lessons/:id', requireAuth, async (req, res) => {
+    try {
+      const lessonId = parseInt(req.params.id);
+      const lesson = await storage.getLesson(lessonId);
+      if (!lesson) {
+        return res.status(404).json({ error: "Lesson not found" });
+      }
+      res.json(lesson);
+    } catch (error) {
+      console.error("Error fetching lesson:", error);
+      res.status(500).json({ error: "Failed to fetch lesson" });
+    }
+  });
+
+  app.get('/api/learning/lessons/:id/quizzes', requireAuth, async (req, res) => {
+    try {
+      const lessonId = parseInt(req.params.id);
+      const quizzes = await storage.getQuizzes(lessonId);
+      res.json(quizzes);
+    } catch (error) {
+      console.error("Error fetching quizzes:", error);
+      res.status(500).json({ error: "Failed to fetch quizzes" });
+    }
+  });
+
+  app.get('/api/learning/progress', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const pathId = req.query.pathId ? parseInt(req.query.pathId) : undefined;
+      const lessonId = req.query.lessonId ? parseInt(req.query.lessonId) : undefined;
+      const progress = await storage.getUserProgress(userId, pathId, lessonId);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error fetching user progress:", error);
+      res.status(500).json({ error: "Failed to fetch progress" });
+    }
+  });
+
+  app.post('/api/learning/progress', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const progressData = { ...req.body, userId };
+      const progress = await storage.createUserProgress(progressData);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error creating progress:", error);
+      res.status(500).json({ error: "Failed to create progress" });
+    }
+  });
+
+  app.put('/api/learning/progress/:id', requireAuth, async (req, res) => {
+    try {
+      const progressId = parseInt(req.params.id);
+      const progress = await storage.updateUserProgress(progressId, req.body);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error updating progress:", error);
+      res.status(500).json({ error: "Failed to update progress" });
+    }
+  });
+
+  app.get('/api/learning/achievements', requireAuth, async (req, res) => {
+    try {
+      const achievements = await storage.getAchievements();
+      res.json(achievements);
+    } catch (error) {
+      console.error("Error fetching achievements:", error);
+      res.status(500).json({ error: "Failed to fetch achievements" });
+    }
+  });
+
+  app.get('/api/learning/user-achievements', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const achievements = await storage.getUserAchievements(userId);
+      res.json(achievements);
+    } catch (error) {
+      console.error("Error fetching user achievements:", error);
+      res.status(500).json({ error: "Failed to fetch user achievements" });
+    }
+  });
+
+  app.get('/api/learning/stats', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      let stats = await storage.getUserStats(userId);
+      
+      if (!stats) {
+        stats = await storage.createUserStats({ userId });
+      }
+      
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+      res.status(500).json({ error: "Failed to fetch user stats" });
+    }
+  });
+
   return httpServer;
 }
