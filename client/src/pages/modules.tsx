@@ -218,19 +218,19 @@ export default function Modules() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">System Modules</h1>
-          <p className="text-gray-400">Manage and monitor trading system components</p>
+          <h1 className="text-2xl font-bold text-foreground">System Modules</h1>
+          <p className="text-muted-foreground">Manage and monitor trading system components</p>
         </div>
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-trading-blue hover:bg-blue-600 text-white">
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
               <PlusIcon className="w-4 h-4 mr-2" />
               Add Module
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-trading-card border-trading-border">
+          <DialogContent className="bg-card border-border">
             <DialogHeader>
-              <DialogTitle>Create New Module</DialogTitle>
+              <DialogTitle className="text-foreground">Create New Module</DialogTitle>
             </DialogHeader>
             
             <form onSubmit={handleCreateModule} className="space-y-4">
@@ -334,7 +334,7 @@ export default function Modules() {
 
       {/* Modules Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {!modules || modules.length === 0 ? (
+        {modulesList.length === 0 ? (
           <div className="col-span-full">
             <Card className="bg-trading-card border-trading-border">
               <CardContent className="p-8 text-center">
@@ -354,7 +354,7 @@ export default function Modules() {
             </Card>
           </div>
         ) : (
-          modules.map((module: any) => {
+          modulesList.map((module: any) => {
             const IconComponent = moduleIcons[module.name as keyof typeof moduleIcons] || ActivityIcon;
             
             return (

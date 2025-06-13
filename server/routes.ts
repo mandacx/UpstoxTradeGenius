@@ -1002,15 +1002,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/modules/:id/toggle", async (req, res) => {
     try {
       const { id } = req.params;
+      const { action } = req.body; // 'start' or 'stop'
+      
       const module = await storage.getModule(Number(id));
       if (!module) {
         return res.status(404).json({ error: "Module not found" });
       }
       
-      const newStatus = module.status === "running" ? "stopped" : "running";
+      let newStatus: string;
+      let statusMessage: string;
+      
+      if (action === 'start') {
+        newStatus = "running";
+        statusMessage = `${module.name} started successfully`;
+        
+        // Add specific startup logic for different modules
+        switch (module.name) {
+          case 'Data Fetcher':
+            console.log(`Starting data fetcher module for real-time market data`);
+            break;
+          case 'Strategy Engine':
+            console.log(`Starting strategy engine - all automated strategies activated`);
+            break;
+          case 'Order Manager':
+            console.log(`Starting order manager - trade execution enabled`);
+            break;
+          case 'Risk Manager':
+            console.log(`Starting risk manager - automatic risk controls activated`);
+            break;
+          case 'Portfolio Sync':
+            console.log(`Starting portfolio sync - broker synchronization enabled`);
+            break;
+        }
+      } else if (action === 'stop') {
+        newStatus = "stopped";
+        statusMessage = `${module.name} stopped successfully`;
+        
+        // Add specific shutdown logic for different modules
+        switch (module.name) {
+          case 'Data Fetcher':
+            console.log(`Stopping data fetcher - real-time market data collection halted`);
+            break;
+          case 'Strategy Engine':
+            console.log(`Stopping strategy engine - all automated strategies deactivated`);
+            break;
+          case 'Order Manager':
+            console.log(`Stopping order manager - trade execution disabled`);
+            break;
+          case 'Risk Manager':
+            console.log(`Stopping risk manager - automatic risk controls disabled`);
+            break;
+          case 'Portfolio Sync':
+            console.log(`Stopping portfolio sync - broker synchronization disabled`);
+            break;
+        }
+      } else {
+        return res.status(400).json({ error: "Invalid action. Use 'start' or 'stop'" });
+      }
+      
       const updatedModule = await storage.updateModule(Number(id), {
         status: newStatus,
         lastUpdate: new Date(),
+      });
+      
+      // Create a log entry for the module status change
+      await storage.createLog({
+        level: 'info',
+        module: module.name,
+        message: statusMessage,
+        data: {
+          moduleId: module.id,
+          action,
+          previousStatus: module.status,
+          newStatus
+        }
       });
       
       res.json(updatedModule);
