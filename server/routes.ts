@@ -795,6 +795,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/eod-expiry-dates", async (req, res) => {
+    try {
+      const expiryDates = await storage.getEodExpiryDates();
+      res.json(expiryDates);
+    } catch (error) {
+      console.error("Error fetching EOD expiry dates:", error);
+      res.status(500).json({ error: "Failed to fetch EOD expiry dates" });
+    }
+  });
+
   app.get("/api/eod-price-report/:symbol/:expiryDt/:tradeDate", async (req, res) => {
     try {
       const { symbol, expiryDt, tradeDate } = req.params;

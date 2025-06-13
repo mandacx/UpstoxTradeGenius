@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Download, TrendingUp, TrendingDown, Calendar, BarChart3 } from "lucide-react";
+import { Search, Download, TrendingUp, TrendingDown, Calendar, BarChart3, ChevronUp, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface EodPriceReport {
@@ -46,9 +46,12 @@ interface EodPriceReport {
 export default function EodReports() {
   const [searchSymbol, setSearchSymbol] = useState("");
   const [selectedSymbol, setSelectedSymbol] = useState("");
+  const [selectedExpiry, setSelectedExpiry] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [limit, setLimit] = useState("50");
+  const [sortField, setSortField] = useState<keyof EodPriceReport>("symbol");
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>("asc");
   const { toast } = useToast();
 
   // Fetch available symbols

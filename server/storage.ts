@@ -778,6 +778,15 @@ export class DatabaseStorage implements IStorage {
     return result.map(row => row.symbol);
   }
 
+  async getEodExpiryDates(): Promise<string[]> {
+    const result = await db
+      .selectDistinct({ expiryDt: eodPriceReport.expiryDt })
+      .from(eodPriceReport)
+      .orderBy(eodPriceReport.expiryDt);
+    
+    return result.map(row => row.expiryDt);
+  }
+
   async getEodPriceBySymbol(symbol: string, expiryDt: string, tradeDate: string): Promise<EodPriceReport | undefined> {
     const [result] = await db
       .select()
