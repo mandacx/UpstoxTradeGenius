@@ -1,6 +1,7 @@
 import { 
   users, accounts, positions, trades, strategies, backtests, backtestTrades, modules, logs, configurations,
   subscriptionPlans, userSubscriptions, paymentMethods, paymentTransactions, usageAnalytics,
+  learningPaths, lessons, quizzes, userProgress, achievements, userAchievements, userStats,
   type User, type InsertUser, type Account, type InsertAccount,
   type Position, type InsertPosition, type Trade, type InsertTrade,
   type Strategy, type InsertStrategy, type Backtest, type InsertBacktest,
@@ -11,7 +12,11 @@ import {
   type UserSubscription, type InsertUserSubscription,
   type PaymentMethod, type InsertPaymentMethod,
   type PaymentTransaction, type InsertPaymentTransaction,
-  type UsageAnalytics, type InsertUsageAnalytics
+  type UsageAnalytics, type InsertUsageAnalytics,
+  type LearningPath, type InsertLearningPath, type Lesson, type InsertLesson,
+  type Quiz, type InsertQuiz, type UserProgress, type InsertUserProgress,
+  type Achievement, type InsertAchievement, type UserAchievement, type InsertUserAchievement,
+  type UserStats, type InsertUserStats
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, ne, gte, lte, like, or } from "drizzle-orm";
@@ -566,6 +571,136 @@ export class DatabaseStorage implements IStorage {
       feature,
       totalValue
     }));
+  }
+
+  // Learning path operations
+  async getLearningPaths(): Promise<LearningPath[]> {
+    return await db.select().from(learningPaths).where(eq(learningPaths.isActive, true)).orderBy(learningPaths.sortOrder);
+  }
+
+  async getLearningPath(id: number): Promise<LearningPath | undefined> {
+    const [path] = await db.select().from(learningPaths).where(eq(learningPaths.id, id));
+    return path;
+  }
+
+  async createLearningPath(path: InsertLearningPath): Promise<LearningPath> {
+    const [result] = await db.insert(learningPaths).values(path).returning();
+    return result;
+  }
+
+  async updateLearningPath(id: number, data: Partial<LearningPath>): Promise<LearningPath> {
+    const [result] = await db.update(learningPaths)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(learningPaths.id, id))
+      .returning();
+    return result;
+  }
+
+  // Lesson operations
+  async getLessons(pathId: number): Promise<Lesson[]> {
+    return await db.select().from(lessons)
+      .where(and(eq(lessons.pathId, pathId), eq(lessons.isActive, true)))
+      .orderBy(lessons.sortOrder);
+  }
+
+  async getLesson(id: number): Promise<Lesson | undefined> {
+    const [lesson] = await db.select().from(lessons).where(eq(lessons.id, id));
+    return lesson;
+  }
+
+  async createLesson(lesson: InsertLesson): Promise<Lesson> {
+    const [result] = await db.insert(lessons).values(lesson).returning();
+    return result;
+  }
+
+  async updateLesson(id: number, data: Partial<Lesson>): Promise<Lesson> {
+    const [result] = await db.update(lessons)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(lessons.id, id))
+      .returning();
+    return result;
+  }
+
+  // Quiz operations
+  async getQuizzes(lessonId: number): Promise<Quiz[]> {
+    return await db.select().from(quizzes)
+      .where(eq(quizzes.lessonId, lessonId))
+      .orderBy(quizzes.sortOrder);
+  }
+
+  async createQuiz(quiz: InsertQuiz): Promise<Quiz> {
+    const [result] = await db.insert(quizzes).values(quiz).returning();
+    return result;
+  }
+
+  // User progress operations
+  async getUserProgress(userId: number, pathId?: number, lessonId?: number): Promise<UserProgress[]> {
+    const conditions = [eq(userProgress.userId, userId)];
+    if (pathId) conditions.push(eq(userProgress.pathId, pathId));
+    if (lessonId) conditions.push(eq(userProgress.lessonId, lessonId));
+
+    return await db.select().from(userProgress)
+      .where(and(...conditions))
+      .orderBy(desc(userProgress.updatedAt));
+  }
+
+  async getUserProgressByLesson(userId: number, lessonId: number): Promise<UserProgress | undefined> {
+    const [progress] = await db.select().from(userProgress)
+      .where(and(eq(userProgress.userId, userId), eq(userProgress.lessonId, lessonId)));
+    return progress;
+  }
+
+  async createUserProgress(progress: InsertUserProgress): Promise<UserProgress> {
+    const [result] = await db.insert(userProgress).values(progress).returning();
+    return result;
+  }
+
+  async updateUserProgress(id: number, data: Partial<UserProgress>): Promise<UserProgress> {
+    const [result] = await db.update(userProgress)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(userProgress.id, id))
+      .returning();
+    return result;
+  }
+
+  // Achievement operations
+  async getAchievements(): Promise<Achievement[]> {
+    return await db.select().from(achievements).where(eq(achievements.isActive, true));
+  }
+
+  async getUserAchievements(userId: number): Promise<UserAchievement[]> {
+    return await db.select().from(userAchievements)
+      .where(eq(userAchievements.userId, userId))
+      .orderBy(desc(userAchievements.unlockedAt));
+  }
+
+  async createAchievement(achievement: InsertAchievement): Promise<Achievement> {
+    const [result] = await db.insert(achievements).values(achievement).returning();
+    return result;
+  }
+
+  async createUserAchievement(userAchievement: InsertUserAchievement): Promise<UserAchievement> {
+    const [result] = await db.insert(userAchievements).values(userAchievement).returning();
+    return result;
+  }
+
+  // User stats operations
+  async getUserStats(userId: number): Promise<UserStats | undefined> {
+    const [stats] = await db.select().from(userStats).where(eq(userStats.userId, userId));
+    return stats;
+  }
+
+  async createUserStats(stats: InsertUserStats): Promise<UserStats> {
+    const [result] = await db.insert(userStats).values(stats).returning();
+    return result;
+  }
+
+  async updateUserStats(userId: number, data: Partial<UserStats>): Promise<UserStats> {
+    const [result] = await db.update(userStats)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(userStats.userId, userId))
+      .returning();
+    return result;
   }
 }
 
