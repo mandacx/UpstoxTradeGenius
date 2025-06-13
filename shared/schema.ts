@@ -584,3 +584,6 @@ export type UserAchievement = typeof userAchievements.$inferSelect;
 export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
 export type UserStats = typeof userStats.$inferSelect;
 export type InsertUserStats = z.infer<typeof insertUserStatsSchema>;
+
+export type EodPriceReport = typeof eodPriceReport.$inferSelect;
+export type InsertEodPriceReport = typeof eodPriceReport.$inferInsert;

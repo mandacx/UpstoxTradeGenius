@@ -1,10 +1,11 @@
 import { 
-  users, accounts, positions, trades, strategies, exclusiveStrategies, backtests, backtestTrades, modules, logs, configurations,
+  users, accounts, positions, trades, strategies, exclusiveStrategies, eodPriceReport, backtests, backtestTrades, modules, logs, configurations,
   subscriptionPlans, userSubscriptions, paymentMethods, paymentTransactions, usageAnalytics,
   learningPaths, lessons, quizzes, userProgress, achievements, userAchievements, userStats,
   type User, type InsertUser, type Account, type InsertAccount,
   type Position, type InsertPosition, type Trade, type InsertTrade,
   type Strategy, type InsertStrategy, type ExclusiveStrategy, type InsertExclusiveStrategy,
+  type EodPriceReport, type InsertEodPriceReport,
   type Backtest, type InsertBacktest,
   type BacktestTrade, type InsertBacktestTrade,
   type Module, type InsertModule, type Log, type InsertLog,
@@ -145,6 +146,11 @@ export interface IStorage {
   getUserUsageAnalytics(userId: number, feature?: string): Promise<UsageAnalytics[]>;
   createUsageAnalytics(analytics: InsertUsageAnalytics): Promise<UsageAnalytics>;
   getUsageStatsByUser(userId: number): Promise<{ feature: string; totalValue: number }[]>;
+
+  // EOD price report operations
+  getEodPriceReport(symbol?: string, startDate?: string, endDate?: string, limit?: number): Promise<EodPriceReport[]>;
+  getEodSymbols(): Promise<string[]>;
+  getEodPriceBySymbol(symbol: string, expiryDt: string, tradeDate: string): Promise<EodPriceReport | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -734,6 +740,56 @@ export class DatabaseStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(eq(userStats.userId, userId))
       .returning();
+    return result;
+  }
+
+  // EOD price report operations
+  async getEodPriceReport(symbol?: string, startDate?: string, endDate?: string, limit: number = 100): Promise<EodPriceReport[]> {
+    let query = db.select().from(eodPriceReport);
+    
+    const conditions = [];
+    if (symbol) {
+      conditions.push(eq(eodPriceReport.symbol, symbol));
+    }
+    if (startDate) {
+      conditions.push(gte(eodPriceReport.tradeDate, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(eodPriceReport.tradeDate, endDate));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    const result = await query
+      .orderBy(desc(eodPriceReport.tradeDate), eodPriceReport.symbol)
+      .limit(limit);
+    
+    return result;
+  }
+
+  async getEodSymbols(): Promise<string[]> {
+    const result = await db
+      .selectDistinct({ symbol: eodPriceReport.symbol })
+      .from(eodPriceReport)
+      .orderBy(eodPriceReport.symbol);
+    
+    return result.map(row => row.symbol);
+  }
+
+  async getEodPriceBySymbol(symbol: string, expiryDt: string, tradeDate: string): Promise<EodPriceReport | undefined> {
+    const [result] = await db
+      .select()
+      .from(eodPriceReport)
+      .where(
+        and(
+          eq(eodPriceReport.symbol, symbol),
+          eq(eodPriceReport.expiryDt, expiryDt),
+          eq(eodPriceReport.tradeDate, tradeDate)
+        )
+      );
+    
     return result;
   }
 }

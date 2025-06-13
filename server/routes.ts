@@ -768,6 +768,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // EOD Price Report endpoints
+  app.get("/api/eod-price-report", async (req, res) => {
+    try {
+      const { symbol, startDate, endDate, limit } = req.query;
+      const data = await storage.getEodPriceReport(
+        symbol as string,
+        startDate as string,
+        endDate as string,
+        limit ? parseInt(limit as string) : undefined
+      );
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching EOD price report:", error);
+      res.status(500).json({ error: "Failed to fetch EOD price report" });
+    }
+  });
+
+  app.get("/api/eod-symbols", async (req, res) => {
+    try {
+      const symbols = await storage.getEodSymbols();
+      res.json(symbols);
+    } catch (error) {
+      console.error("Error fetching EOD symbols:", error);
+      res.status(500).json({ error: "Failed to fetch EOD symbols" });
+    }
+  });
+
+  app.get("/api/eod-price-report/:symbol/:expiryDt/:tradeDate", async (req, res) => {
+    try {
+      const { symbol, expiryDt, tradeDate } = req.params;
+      const data = await storage.getEodPriceBySymbol(symbol, expiryDt, tradeDate);
+      if (!data) {
+        return res.status(404).json({ error: "EOD price data not found" });
+      }
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching EOD price data:", error);
+      res.status(500).json({ error: "Failed to fetch EOD price data" });
+    }
+  });
+
   app.post("/api/strategies", async (req, res) => {
     try {
       const userId = 1; // In real app, get from session
