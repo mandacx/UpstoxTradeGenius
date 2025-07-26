@@ -1,0 +1,7 @@
+# Ignore temporary files
+*.tmp
+*.temp
+*.log
+
+# Keep backup files but ignore very large ones
+*.sql.gz.backup
