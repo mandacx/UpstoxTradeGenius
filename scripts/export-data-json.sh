@@ -1,21 +1,20 @@
 #!/bin/bash
 
-# Database Backup Script for Trading Dashboard
-# This script creates comprehensive backups of schema and data
+# JSON Data Export Script for Trading Dashboard
+# Exports all database data to JSON format for version control
 
 set -e
 
 # Configuration
-BACKUP_DIR="database/backups"
+EXPORT_DIR="database/exports"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-SCHEMA_BACKUP="${BACKUP_DIR}/schema_${TIMESTAMP}.sql"
-DATA_BACKUP="${BACKUP_DIR}/data_${TIMESTAMP}.sql"
-FULL_BACKUP="${BACKUP_DIR}/full_backup_${TIMESTAMP}.sql"
+JSON_EXPORT="${EXPORT_DIR}/database_export_${TIMESTAMP}.json"
+LATEST_EXPORT="${EXPORT_DIR}/latest_export.json"
 
-# Create backup directory if it doesn't exist
-mkdir -p "${BACKUP_DIR}"
+# Create export directory if it doesn't exist
+mkdir -p "${EXPORT_DIR}"
 
-echo "🔄 Starting database backup at $(date)"
+echo "🔄 Starting JSON data export at $(date)"
 
 # Check if DATABASE_URL is set
 if [ -z "$DATABASE_URL" ]; then
@@ -24,27 +23,11 @@ if [ -z "$DATABASE_URL" ]; then
 fi
 
 # Extract connection details from DATABASE_URL
-# Handle both postgres:// and postgresql:// schemes
 DB_URL=$(echo $DATABASE_URL | sed 's/postgres:/postgresql:/')
 
-echo "📊 Creating schema-only backup..."
-pg_dump --schema-only --no-owner --no-privileges "$DB_URL" > "$SCHEMA_BACKUP"
+echo "📊 Exporting database data to JSON..."
 
-echo "💾 Creating data-only backup..."
-pg_dump --data-only --no-owner --no-privileges "$DB_URL" > "$DATA_BACKUP"
-
-echo "🗄️ Creating full backup..."
-pg_dump --no-owner --no-privileges "$DB_URL" > "$FULL_BACKUP"
-
-# Create JSON export
-echo "📄 Creating JSON data export..."
-JSON_DIR="database/exports"
-JSON_TIMESTAMP="${TIMESTAMP}"
-JSON_EXPORT="${JSON_DIR}/database_export_${JSON_TIMESTAMP}.json"
-
-mkdir -p "${JSON_DIR}"
-
-# Export all data to JSON format
+# Create comprehensive JSON export with all tables
 psql "$DB_URL" -c "
 COPY (
     SELECT json_build_object(
@@ -52,7 +35,7 @@ COPY (
             'export_timestamp', NOW(),
             'database_name', current_database(),
             'postgresql_version', version(),
-            'backup_type', 'full_json_export'
+            'total_tables', (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public')
         ),
         'users', COALESCE((SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM users ORDER BY id) t), '[]'::json),
         'accounts', COALESCE((SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM accounts ORDER BY id) t), '[]'::json),
@@ -63,6 +46,7 @@ COPY (
         'backtests', COALESCE((SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM backtests ORDER BY id) t), '[]'::json),
         'backtest_trades', COALESCE((SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM backtest_trades ORDER BY id) t), '[]'::json),
         'modules', COALESCE((SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM modules ORDER BY id) t), '[]'::json),
+        'logs', COALESCE((SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM logs ORDER BY id DESC LIMIT 1000) t), '[]'::json),
         'subscription_plans', COALESCE((SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM subscription_plans ORDER BY id) t), '[]'::json),
         'user_subscriptions', COALESCE((SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM user_subscriptions ORDER BY id) t), '[]'::json),
         'payment_methods', COALESCE((SELECT json_agg(row_to_json(t)) FROM (SELECT * FROM payment_methods ORDER BY id) t), '[]'::json),
@@ -80,46 +64,45 @@ COPY (
 ) TO STDOUT
 " > "$JSON_EXPORT"
 
-# Format JSON if jq is available
+# Create pretty-formatted JSON
+echo "🎨 Formatting JSON for readability..."
 if command -v jq &> /dev/null; then
-    echo "🎨 Formatting JSON..."
     jq '.' "$JSON_EXPORT" > "${JSON_EXPORT}.tmp" && mv "${JSON_EXPORT}.tmp" "$JSON_EXPORT"
+else
+    echo "ℹ️  jq not available, JSON export will be minified"
 fi
 
-# Compress backups to save space
-echo "🗜️ Compressing backups..."
-gzip "$SCHEMA_BACKUP" "$DATA_BACKUP" "$FULL_BACKUP"
+# Create latest export symlink
+cp "$JSON_EXPORT" "$LATEST_EXPORT"
 
-# Compress JSON export
+# Compress the timestamped export to save space
 echo "🗜️ Compressing JSON export..."
 gzip "$JSON_EXPORT"
 
-# Clean up old backups (keep last 10)
-echo "🧹 Cleaning up old backups..."
-cd "${BACKUP_DIR}"
-ls -t *.sql.gz | tail -n +31 | xargs -r rm
+# Clean up old exports (keep last 20)
+echo "🧹 Cleaning up old exports..."
+cd "${EXPORT_DIR}"
+ls -t database_export_*.json.gz 2>/dev/null | tail -n +21 | xargs -r rm
 
-echo "✅ Database backup completed successfully!"
-echo "📁 Backup files created:"
-echo "   - Schema: ${SCHEMA_BACKUP}.gz"
-echo "   - Data: ${DATA_BACKUP}.gz" 
-echo "   - Full: ${FULL_BACKUP}.gz"
-echo "   - JSON: ${JSON_EXPORT}.gz"
+echo "✅ JSON export completed successfully!"
+echo "📁 Export files created:"
+echo "   - Compressed: ${JSON_EXPORT}.gz"
+echo "   - Latest: ${LATEST_EXPORT}"
 
-# Add SQL backups to git if in a git repository
-if [ -d "${BACKUP_DIR}" ] && cd "${BACKUP_DIR}" && git rev-parse --git-dir > /dev/null 2>&1; then
-    echo "🔗 Adding SQL backups to git repository..."
-    git add *.sql.gz 2>/dev/null || echo "ℹ️ No SQL backup files to add to git"
-    git commit -m "SQL backup: $(date '+%Y-%m-%d %H:%M:%S')" 2>/dev/null || echo "ℹ️ No changes to commit"
-    cd - > /dev/null
-fi
+# Get file sizes for reporting
+COMPRESSED_SIZE=$(du -h "${JSON_EXPORT}.gz" | cut -f1)
+LATEST_SIZE=$(du -h "$LATEST_EXPORT" | cut -f1)
 
-# Add JSON exports to git if in a git repository  
-if [ -d "${JSON_DIR}" ] && cd "${JSON_DIR}" && git rev-parse --git-dir > /dev/null 2>&1; then
+echo "📊 Export statistics:"
+echo "   - Compressed size: $COMPRESSED_SIZE"
+echo "   - Uncompressed size: $LATEST_SIZE"
+
+# Add to git if in a git repository
+if [ -d "${EXPORT_DIR}" ] && cd "${EXPORT_DIR}" && git rev-parse --git-dir > /dev/null 2>&1; then
     echo "🔗 Adding JSON exports to git repository..."
-    git add *.json.gz 2>/dev/null || echo "ℹ️ No JSON export files to add to git"
-    git commit -m "JSON export: $(date '+%Y-%m-%d %H:%M:%S')" 2>/dev/null || echo "ℹ️ No changes to commit"
+    git add *.json *.json.gz 2>/dev/null || echo "ℹ️ No export files to add to git"
+    git commit -m "JSON data export: $(date '+%Y-%m-%d %H:%M:%S')" 2>/dev/null || echo "ℹ️ No changes to commit"
     cd - > /dev/null
 fi
 
-echo "🎉 Backup process completed at $(date)"
+echo "🎉 JSON export process completed at $(date)"

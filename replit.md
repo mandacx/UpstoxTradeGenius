@@ -16,12 +16,15 @@ A comprehensive trading dashboard platform that empowers users with advanced fin
 
 ## Recent Changes
 
-### Database Backup Infrastructure (2025-01-26)
+### Database Backup Infrastructure (2025-01-27)
 - ✅ Created comprehensive backup system with automated scripts
 - ✅ Added database schema export with all tables and relationships
 - ✅ Implemented Git version control for database backups
 - ✅ Created sample data for development and testing
 - ✅ Added compression, retention policies, and automated cleanup
+- ✅ Added JSON export functionality with structured data format
+- ✅ Integrated unified backup system (SQL + JSON) with Git version control
+- ✅ Created multiple Git repositories for organized backup management
 
 ### EOD Reports Enhancement (Previous)
 - ✅ Added OHLC (Open, High, Low, Close) columns with color-coded headers
@@ -91,10 +94,13 @@ A comprehensive trading dashboard platform that empowers users with advanced fin
 - `database/sample-data.sql` - Sample data for development
 
 ### Backup Infrastructure
-- `scripts/backup-database.sh` - Automated backup script
+- `scripts/backup-database.sh` - Unified backup script (SQL + JSON)
+- `scripts/export-data-json.sh` - Standalone JSON export script
 - `scripts/restore-database.sh` - Database restore functionality
 - `scripts/init-database.sh` - Database initialization
-- `database/backups/` - Backup storage directory (Git versioned)
+- `database/backups/` - SQL backup storage (Git versioned)
+- `database/exports/` - JSON export storage (Git versioned)
+- `database/BACKUP_COMMANDS.md` - Quick reference guide
 
 ### Core Application
 - `server/routes.ts` - API endpoints and route handlers
